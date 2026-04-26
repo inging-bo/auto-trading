@@ -1,0 +1,8 @@
+python-kis>=2.0.0
+typing_extensions
+pandas
+numpy
+pyyaml
+python-dotenv
+schedule
+flask

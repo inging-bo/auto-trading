@@ -1,0 +1,153 @@
+import os
+import logging
+from dotenv import load_dotenv
+import pandas as pd
+from pykis import PyKis, KisStock, KisOrder
+
+load_dotenv()
+logger = logging.getLogger(__name__)
+
+
+class KisClient:
+    def __init__(self, virtual: bool = False):
+        self.virtual = virtual
+        self._kis: PyKis = None
+
+    def connect(self):
+        required = ["KIS_ID", "KIS_ACCOUNT", "KIS_APPKEY", "KIS_SECRETKEY"]
+        for key in required:
+            if not os.getenv(key):
+                raise EnvironmentError(f".env 파일에 {key}가 없습니다.")
+
+        kwargs = dict(
+            id=os.getenv("KIS_ID"),
+            account=os.getenv("KIS_ACCOUNT"),
+            appkey=os.getenv("KIS_APPKEY"),
+            secretkey=os.getenv("KIS_SECRETKEY"),
+            keep_token=True,
+        )
+
+        if self.virtual:
+            for key in ["KIS_VIRTUAL_APPKEY", "KIS_VIRTUAL_SECRETKEY"]:
+                if not os.getenv(key):
+                    raise EnvironmentError(f"모의투자 사용 시 .env 파일에 {key}가 필요합니다.")
+            kwargs["virtual_id"] = os.getenv("KIS_ID")
+            kwargs["virtual_appkey"] = os.getenv("KIS_VIRTUAL_APPKEY")
+            kwargs["virtual_secretkey"] = os.getenv("KIS_VIRTUAL_SECRETKEY")
+
+        self._kis = PyKis(**kwargs)
+        mode = "모의투자" if self.virtual else "실전투자"
+        logger.info(f"KIS API 연결 완료 ({mode})")
+
+    def _check_connected(self):
+        if self._kis is None:
+            raise RuntimeError("connect()를 먼저 호출하세요.")
+
+    def stock(self, symbol: str) -> KisStock:
+        self._check_connected()
+        return self._kis.stock(symbol)
+
+    def get_chart(self, symbol: str, days: str = "60d", interval: int = 5) -> pd.DataFrame:
+        """
+        종목의 분봉 차트 데이터를 DataFrame으로 반환합니다.
+        days: 조회 기간 (예: "60d", "30d")
+        interval: 분봉 단위 (1, 3, 5, 10, 15, 30, 60)
+        """
+        self._check_connected()
+        try:
+            s = self._kis.stock(symbol)
+            chart = s.chart(days, period=interval)
+            df = chart.df()
+            df.columns = [c.lower() for c in df.columns]
+            return df
+        except Exception as e:
+            logger.warning(f"[{symbol}] 차트 조회 실패: {e}")
+            return pd.DataFrame()
+
+    def get_quote(self, symbol: str) -> dict:
+        """현재가, 거래량 등 시세 정보를 반환합니다."""
+        self._check_connected()
+        try:
+            q = self._kis.stock(symbol).quote()
+            return {
+                "symbol": symbol,
+                "price": float(q.price),
+                "volume": int(q.volume),
+                "open": float(q.open),
+                "high": float(q.high),
+                "low": float(q.low),
+                "prev_price": float(q.prev_price),
+                "market_cap": int(q.market_cap) if q.market_cap else 0,
+            }
+        except Exception as e:
+            logger.warning(f"[{symbol}] 시세 조회 실패: {e}")
+            return {}
+
+    def buy(self, symbol: str, qty: int) -> KisOrder | None:
+        """시장가 매수 주문을 실행합니다."""
+        self._check_connected()
+        try:
+            s = self._kis.stock(symbol)
+            order = s.buy(qty=qty)
+            logger.info(f"[{symbol}] 매수 주문 완료 - {qty}주")
+            return order
+        except Exception as e:
+            logger.error(f"[{symbol}] 매수 주문 실패: {e}")
+            return None
+
+    def sell(self, symbol: str, qty: int = 0) -> KisOrder | None:
+        """시장가 매도 주문을 실행합니다. qty=0이면 전량 매도."""
+        self._check_connected()
+        try:
+            s = self._kis.stock(symbol)
+            order = s.sell(qty=qty if qty > 0 else None)
+            logger.info(f"[{symbol}] 매도 주문 완료")
+            return order
+        except Exception as e:
+            logger.error(f"[{symbol}] 매도 주문 실패: {e}")
+            return None
+
+    def get_balance(self) -> dict:
+        """계좌 잔고 정보를 반환합니다."""
+        self._check_connected()
+        try:
+            balance = self._kis.account().balance()
+            krw_deposit = balance.deposits.get("KRW")
+            cash = float(krw_deposit.amount) if krw_deposit else 0.0
+            stock_value = float(balance.current_amount) if balance.current_amount else 0.0
+            return {
+                "cash": cash,
+                "total_assets": cash + stock_value,
+            }
+        except Exception as e:
+            logger.error(f"잔고 조회 실패: {e}")
+            return {"cash": 0, "total_assets": 0}
+
+    def get_holdings(self) -> list[dict]:
+        """보유 종목 목록을 반환합니다."""
+        self._check_connected()
+        try:
+            stocks = self._kis.account().balance().stocks
+            result = []
+            for s in stocks:
+                qty = int(s.qty)
+                current_price = float(s.price)
+                profit_rate = float(s.profit_rate) if hasattr(s, "profit_rate") else 0.0
+                # avg_price: purchase_amount / qty로 계산 (직접 속성 없을 경우)
+                if hasattr(s, "purchase_price"):
+                    avg_price = float(s.purchase_price)
+                elif qty > 0 and hasattr(s, "amount") and hasattr(s, "profit"):
+                    avg_price = (float(s.amount) - float(s.profit)) / qty
+                else:
+                    avg_price = current_price
+                result.append({
+                    "symbol": s.symbol,
+                    "qty": qty,
+                    "avg_price": avg_price,
+                    "current_price": current_price,
+                    "profit_rate": profit_rate,
+                })
+            return result
+        except Exception as e:
+            logger.error(f"보유 종목 조회 실패: {e}")
+            return []
