@@ -30,6 +30,11 @@ function krw(n) {
   return Math.round(n).toLocaleString('ko-KR') + '원';
 }
 
+function usd(n) {
+  if (n == null || isNaN(n)) return '—';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function pct(r) {
   if (r == null || isNaN(r)) return '—';
   const sign = r > 0 ? '+' : '';
@@ -129,28 +134,53 @@ function renderBalance(d) {
 }
 
 function renderHoldings(list) {
-  const tbody = document.getElementById('holdingsBody');
-  const badge = document.getElementById('holdingsCount');
+  const container = document.getElementById('holdingsContainer');
+  const badge     = document.getElementById('holdingsCount');
   badge.textContent = list.length;
 
   if (!list.length) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">보유 종목이 없습니다</td></tr>`;
+    container.innerHTML = `<div class="empty-holdings">보유 종목이 없습니다</div>`;
     return;
   }
 
-  tbody.innerHTML = list.map(h => {
-    const profit = (h.current_price - h.avg_price) * h.qty;
-    const rc     = rateClass(h.profit_rate);
+  const kr   = list.filter(h => (h.market ?? (/^\d+$/.test(h.symbol) ? 'KR' : 'US')) === 'KR');
+  const us   = list.filter(h => (h.market ?? (/^\d+$/.test(h.symbol) ? 'KR' : 'US')) === 'US');
+  const both = kr.length > 0 && us.length > 0;
+
+  function tableSection(items, title, fmt) {
+    const header = both ? `<div class="market-subtitle">${title}</div>` : '';
+    const rows = items.map(h => {
+      const profit = (h.current_price - h.avg_price) * h.qty;
+      const rc     = rateClass(h.profit_rate);
+      return `
+        <tr>
+          <td><span class="cell-symbol">${esc(h.symbol)}</span></td>
+          <td>${h.qty.toLocaleString()}주</td>
+          <td>${fmt(h.avg_price)}</td>
+          <td>${fmt(h.current_price)}</td>
+          <td class="${rc}">${pct(h.profit_rate)}</td>
+          <td class="${rc}">${fmt(profit)}</td>
+        </tr>`;
+    }).join('');
     return `
-      <tr>
-        <td><span class="cell-symbol">${esc(h.symbol)}</span></td>
-        <td>${h.qty.toLocaleString()}주</td>
-        <td>${krw(h.avg_price)}</td>
-        <td>${krw(h.current_price)}</td>
-        <td class="${rc}">${pct(h.profit_rate)}</td>
-        <td class="${rc}">${krw(profit)}</td>
-      </tr>`;
-  }).join('');
+      ${header}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>종목코드</th><th>수량</th><th>평균단가</th>
+              <th>현재가</th><th>수익률</th><th>평가손익</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  let html = '';
+  if (kr.length) html += tableSection(kr, '한국 주식', krw);
+  if (us.length) html += tableSection(us, '미국 주식', usd);
+  container.innerHTML = html;
 }
 
 // ── Logs ─────────────────────────────────────────────────

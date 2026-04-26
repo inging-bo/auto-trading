@@ -315,6 +315,25 @@ table { border-collapse: collapse; }
   font-size: 14px;
 }
 
+.empty-holdings {
+  text-align: center;
+  padding: 56px 20px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.market-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: 24px 0 10px;
+}
+.market-subtitle:first-child { margin-top: 0; }
+
+#holdingsContainer .table-wrap + .market-subtitle { margin-top: 28px; }
+
 /* ── Strategy ──────────────────────────────────────────── */
 .strategy-pills {
   display: flex;

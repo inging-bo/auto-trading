@@ -146,6 +146,7 @@ class KisClient:
                     "avg_price": avg_price,
                     "current_price": current_price,
                     "profit_rate": profit_rate,
+                    "market": "KR" if s.symbol.isdigit() else "US",
                 })
             return result
         except Exception as e:
