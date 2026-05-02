@@ -588,11 +588,56 @@ table { border-collapse: collapse; }
   color: var(--text-2);
 }
 
+.watchlist-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
 .watchlist-updated {
   font-size: 11px;
   color: var(--text-2);
-  margin-top: 12px;
-  text-align: right;
+}
+
+.market-legend {
+  font-size: 11px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.market-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+.market-badge--kr {
+  background: rgba(0, 192, 135, 0.12);
+  color: var(--green);
+}
+.market-badge--us {
+  background: rgba(0, 82, 255, 0.1);
+  color: var(--blue);
+}
+
+.accum-select {
+  cursor: pointer;
+}
+.accum-currency {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  min-width: 30px;
 }
 
 /* ── Log ────────────────────────────────────────────────── */

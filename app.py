@@ -11,10 +11,11 @@ from collections import deque
 from datetime import datetime
 from flask import Flask, jsonify, render_template, request
 
-from kis_client import KisClient
+from kis_client import KisClient, parse_us_ticker
 from strategies import STRATEGY_MAP
 
 STOCK_NAMES: dict[str, str] = {
+    # 한국
     "005930": "삼성전자",
     "000660": "SK하이닉스",
     "035420": "NAVER",
@@ -30,6 +31,22 @@ STOCK_NAMES: dict[str, str] = {
     "028260": "삼성물산",
     "012330": "현대모비스",
     "005380": "현대차",
+    # 미국
+    "AAPL": "Apple",
+    "MSFT": "Microsoft",
+    "NVDA": "NVIDIA",
+    "TSLA": "Tesla",
+    "AMZN": "Amazon",
+    "GOOGL": "Alphabet",
+    "GOOG": "Alphabet",
+    "META": "Meta",
+    "NFLX": "Netflix",
+    "AMD": "AMD",
+    "INTC": "Intel",
+    "ORCL": "Oracle",
+    "CRM": "Salesforce",
+    "ADBE": "Adobe",
+    "PYPL": "PayPal",
 }
 
 app = Flask(__name__)
@@ -102,45 +119,70 @@ def get_balance_cached(force: bool = False) -> dict:
 
 def _fetch_watchlist_from_api() -> dict:
     config = _load_config()
-    cfg = config.get("screener", {})
-    watchlist: list[str] = cfg.get("watchlist", [])
-    min_volume: int = cfg.get("min_volume", 500000)
-    min_price: int = cfg.get("min_price", 5000)
-    max_price: int = cfg.get("max_price", 200000)
+    kr_cfg = config.get("screener", {})
+    us_cfg = config.get("us_screener", {})
+    kr_watchlist: list[str] = kr_cfg.get("watchlist", [])
+    us_watchlist: list = us_cfg.get("watchlist", [])
+    kr_min_vol: int = kr_cfg.get("min_volume", 500000)
+    kr_min_price: int = kr_cfg.get("min_price", 5000)
+    kr_max_price: int = kr_cfg.get("max_price", 200000)
+    us_min_vol: int = us_cfg.get("min_volume", 1000000)
 
     # config 종목을 항상 채워 두어 API 실패 시에도 목록은 표시
-    items = [{"symbol": s, "name": STOCK_NAMES.get(s, s), "error": True} for s in watchlist]
+    kr_defaults = [{"symbol": s, "name": STOCK_NAMES.get(s, s),
+                    "market_type": "KR", "currency": "KRW", "error": True}
+                   for s in kr_watchlist]
+    us_defaults = []
+    for item in us_watchlist:
+        sym, _ = parse_us_ticker(str(item))
+        us_defaults.append({"symbol": sym, "name": STOCK_NAMES.get(sym, sym),
+                             "market_type": "US", "currency": "USD", "error": True})
+    items = kr_defaults + us_defaults
 
     try:
         client = KisClient(virtual=config.get("virtual", False))
         client.connect()
         filled = []
-        for symbol in watchlist:
+
+        # KR 종목
+        for symbol in kr_watchlist:
             name = STOCK_NAMES.get(symbol, symbol)
-            quote = client.get_quote(symbol)
+            quote = client.get_quote(symbol, market="KRX")
             if not quote:
-                filled.append({"symbol": symbol, "name": name, "error": True})
+                filled.append({"symbol": symbol, "name": name,
+                                "market_type": "KR", "currency": "KRW", "error": True})
                 continue
-            price = quote["price"]
-            volume = quote["volume"]
+            price, volume = quote["price"], quote["volume"]
             prev = quote.get("prev_price", price)
             change_rate = round(((price - prev) / prev * 100) if prev else 0.0, 2)
-
             fail_reason = None
-            if volume < min_volume:
+            if volume < kr_min_vol:
                 fail_reason = "거래량 부족"
-            elif not (min_price <= price <= max_price):
+            elif not (kr_min_price <= price <= kr_max_price):
                 fail_reason = "가격 범위 초과"
+            filled.append({"symbol": symbol, "name": name, "market_type": "KR",
+                           "currency": "KRW", "price": price, "volume": volume,
+                           "change_rate": change_rate, "passed": fail_reason is None,
+                           "fail_reason": fail_reason})
 
-            filled.append({
-                "symbol": symbol,
-                "name": name,
-                "price": price,
-                "volume": volume,
-                "change_rate": change_rate,
-                "passed": fail_reason is None,
-                "fail_reason": fail_reason,
-            })
+        # US 종목
+        for item in us_watchlist:
+            sym, exchange = parse_us_ticker(str(item))
+            name = STOCK_NAMES.get(sym, sym)
+            quote = client.get_quote(sym, market=exchange)
+            if not quote:
+                filled.append({"symbol": sym, "name": name,
+                                "market_type": "US", "currency": "USD", "error": True})
+                continue
+            price, volume = quote["price"], quote["volume"]
+            prev = quote.get("prev_price", price)
+            change_rate = round(((price - prev) / prev * 100) if prev else 0.0, 2)
+            fail_reason = "거래량 부족" if volume < us_min_vol else None
+            filled.append({"symbol": sym, "name": name, "market_type": "US",
+                           "currency": "USD", "price": price, "volume": volume,
+                           "change_rate": change_rate, "passed": fail_reason is None,
+                           "fail_reason": fail_reason})
+
         items = filled
     except Exception as e:
         logger.error(f"감시종목 조회 실패: {e}")
@@ -255,6 +297,7 @@ def api_status():
         "virtual": config.get("virtual", False),
         "interval": config.get("interval_minutes", 5),
         "dynamic_universe": config.get("use_dynamic_universe", False),
+        "market": config.get("market", "KR"),
     })
 
 
@@ -355,26 +398,31 @@ def api_accumulation_buy():
     """지정 종목을 지정 금액만큼 즉시 매수합니다."""
     data = request.get_json() or {}
     symbol = str(data.get("symbol", "")).strip()
-    amount = int(data.get("amount", 0))
+    amount = float(data.get("amount", 0))
+    market = str(data.get("market", "KRX"))
     if not symbol or amount <= 0:
         return jsonify({"error": "종목코드와 금액을 입력하세요."}), 400
+    is_kr = (market == "KRX")
     config = _load_config()
     try:
         client = KisClient(virtual=config.get("virtual", False))
         client.connect()
-        quote = client.get_quote(symbol)
+        quote = client.get_quote(symbol, market=market)
         if not quote:
             return jsonify({"error": f"[{symbol}] 시세 조회 실패"}), 500
         price = quote["price"]
         qty = math.floor(amount / price)
         if qty < 1:
-            return jsonify({"error": f"{amount:,}원으로 {price:,}원짜리 종목 1주 미만입니다."}), 400
+            unit = "원" if is_kr else "USD"
+            return jsonify({"error": f"{amount:,.0f}{unit}으로 1주 미만입니다. (현재가 {price:,.2f})"}), 400
         actual = qty * price
-        client.buy(symbol, qty)
+        client.buy(symbol, qty, market=market)
         name = STOCK_NAMES.get(symbol, symbol)
-        logger.info(f"[{symbol}] 모으기 즉시매수 {qty}주 @ {price:,}원 (≈{actual:,}원)")
+        price_str = f"{price:,.0f}원" if is_kr else f"${price:.2f}"
+        logger.info(f"[{symbol}] 모으기 즉시매수 {qty}주 @ {price_str}")
         return jsonify({"status": "ok", "symbol": symbol, "name": name,
-                        "qty": qty, "price": price, "actual_amount": actual})
+                        "qty": qty, "price": price, "actual_amount": actual,
+                        "currency": "KRW" if is_kr else "USD"})
     except Exception as e:
         logger.error(f"모으기 즉시매수 실패: {e}")
         return jsonify({"error": str(e)}), 500

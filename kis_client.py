@@ -7,6 +7,21 @@ from pykis import PyKis, KisStock, KisOrder
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+# 거래소 단축코드 → PyKis market 문자열
+EXCHANGE_CODE_MAP: dict[str, str] = {
+    "NASD": "NASDAQ",
+    "NYSE": "NYSE",
+    "AMEX": "AMEX",
+}
+
+
+def parse_us_ticker(ticker: str) -> tuple[str, str]:
+    """'AAPL.NASD' → ('AAPL', 'NASDAQ')"""
+    parts = ticker.upper().split(".", 1)
+    symbol = parts[0]
+    exchange = EXCHANGE_CODE_MAP.get(parts[1] if len(parts) > 1 else "NASD", "NASDAQ")
+    return symbol, exchange
+
 
 class KisClient:
     def __init__(self, virtual: bool = False):
@@ -47,15 +62,15 @@ class KisClient:
         self._check_connected()
         return self._kis.stock(symbol)
 
-    def get_chart(self, symbol: str, days: str = "60d", interval: int = 5) -> pd.DataFrame:
-        """
-        종목의 분봉 차트 데이터를 DataFrame으로 반환합니다.
-        days: 조회 기간 (예: "60d", "30d")
-        interval: 분봉 단위 (1, 3, 5, 10, 15, 30, 60)
+    def get_chart(self, symbol: str, market: str = "KRX",
+                  days: str = "60d", interval: int | str = 5) -> pd.DataFrame:
+        """종목 차트 데이터를 DataFrame으로 반환합니다.
+        market: 'KRX' | 'NASDAQ' | 'NYSE' | 'AMEX'
+        interval: 분봉 단위(KR) 또는 'day'(일봉)
         """
         self._check_connected()
         try:
-            s = self._kis.stock(symbol)
+            s = self._kis.stock(symbol, market=market)
             chart = s.chart(days, period=interval)
             df = chart.df()
             df.columns = [c.lower() for c in df.columns]
@@ -64,20 +79,23 @@ class KisClient:
             logger.warning(f"[{symbol}] 차트 조회 실패: {e}")
             return pd.DataFrame()
 
-    def get_quote(self, symbol: str) -> dict:
-        """현재가, 거래량 등 시세 정보를 반환합니다."""
+    def get_quote(self, symbol: str, market: str = "KRX") -> dict:
+        """현재가, 거래량 등 시세 정보를 반환합니다.
+        market: 'KRX' | 'NASDAQ' | 'NYSE' | 'AMEX'
+        """
         self._check_connected()
         try:
-            q = self._kis.stock(symbol).quote()
+            q = self._kis.stock(symbol, market=market).quote()
             return {
                 "symbol": symbol,
+                "market": market,
                 "price": float(q.price),
-                "volume": int(q.volume),
-                "open": float(q.open),
-                "high": float(q.high),
-                "low": float(q.low),
-                "prev_price": float(q.prev_price),
-                "market_cap": int(q.market_cap) if q.market_cap else 0,
+                "volume": int(q.volume) if hasattr(q, "volume") and q.volume else 0,
+                "open": float(q.open) if hasattr(q, "open") else float(q.price),
+                "high": float(q.high) if hasattr(q, "high") else float(q.price),
+                "low": float(q.low) if hasattr(q, "low") else float(q.price),
+                "prev_price": float(q.prev_price) if hasattr(q, "prev_price") else float(q.price),
+                "market_cap": int(q.market_cap) if hasattr(q, "market_cap") and q.market_cap else 0,
             }
         except Exception as e:
             logger.warning(f"[{symbol}] 시세 조회 실패: {e}")
@@ -122,11 +140,11 @@ class KisClient:
             logger.warning(f"유니버스 조회 실패: {e}")
             return []
 
-    def buy(self, symbol: str, qty: int) -> KisOrder | None:
+    def buy(self, symbol: str, qty: int, market: str = "KRX") -> KisOrder | None:
         """시장가 매수 주문을 실행합니다."""
         self._check_connected()
         try:
-            s = self._kis.stock(symbol)
+            s = self._kis.stock(symbol, market=market)
             order = s.buy(qty=qty)
             logger.info(f"[{symbol}] 매수 주문 완료 - {qty}주")
             return order
@@ -134,11 +152,11 @@ class KisClient:
             logger.error(f"[{symbol}] 매수 주문 실패: {e}")
             return None
 
-    def sell(self, symbol: str, qty: int = 0) -> KisOrder | None:
+    def sell(self, symbol: str, qty: int = 0, market: str = "KRX") -> KisOrder | None:
         """시장가 매도 주문을 실행합니다. qty=0이면 전량 매도."""
         self._check_connected()
         try:
-            s = self._kis.stock(symbol)
+            s = self._kis.stock(symbol, market=market)
             order = s.sell(qty=qty if qty > 0 else None)
             logger.info(f"[{symbol}] 매도 주문 완료")
             return order
@@ -179,13 +197,18 @@ class KisClient:
                     avg_price = (float(s.amount) - float(s.profit)) / qty
                 else:
                     avg_price = current_price
+                is_kr = str(s.symbol).isdigit()
+                kis_market = "KRX" if is_kr else (
+                    str(s.market) if hasattr(s, "market") and not is_kr else "NASDAQ"
+                )
                 result.append({
                     "symbol": s.symbol,
                     "qty": qty,
                     "avg_price": avg_price,
                     "current_price": current_price,
                     "profit_rate": profit_rate,
-                    "market": "KR" if s.symbol.isdigit() else "US",
+                    "market": "KR" if is_kr else "US",
+                    "kis_market": kis_market,
                 })
             return result
         except Exception as e:

@@ -215,20 +215,21 @@ function renderAccumulation(d) {
     return;
   }
 
-  const rows = accumTargets.map((t, i) => `
-    <tr>
-      <td>
-        <span class="cell-symbol">${esc(t.symbol)}</span>
-        <span class="cell-name">${esc(t.name ?? '')}</span>
-      </td>
-      <td>${Number(t.amount).toLocaleString('ko-KR')}원</td>
-      <td>
-        <button class="btn-accum-buy" onclick="buyNow('${esc(t.symbol)}', ${t.amount})">지금 매수</button>
-      </td>
-      <td>
-        <button class="btn-accum-del" onclick="removeAccumTarget(${i})">×</button>
-      </td>
-    </tr>`).join('');
+  const rows = accumTargets.map((t, i) => {
+    const isUS = t.market && t.market !== 'KRX';
+    const mBadge = isUS
+      ? `<span class="market-badge market-badge--us">US</span>`
+      : `<span class="market-badge market-badge--kr">KR</span>`;
+    const amtStr = isUS
+      ? `$${Number(t.amount).toLocaleString('en-US')}`
+      : `${Number(t.amount).toLocaleString('ko-KR')}원`;
+    return `<tr>
+      <td>${mBadge}<span class="cell-symbol">${esc(t.symbol)}</span><span class="cell-name">${esc(t.name ?? '')}</span></td>
+      <td>${amtStr}</td>
+      <td><button class="btn-accum-buy" onclick="buyNow('${esc(t.symbol)}', ${t.amount}, '${esc(t.market ?? 'KRX')}')">지금 매수</button></td>
+      <td><button class="btn-accum-del" onclick="removeAccumTarget(${i})">×</button></td>
+    </tr>`;
+  }).join('');
 
   container.innerHTML = `
     <div class="table-wrap">
@@ -250,15 +251,27 @@ async function toggleAccumulation(enabled) {
   });
 }
 
+function onAccumMarketChange() {
+  const market = document.getElementById('accumMarket').value;
+  const isUS = market !== 'KRX';
+  document.getElementById('accumCurrencyLabel').textContent = isUS ? 'USD' : '원';
+  document.getElementById('accumSymbol').placeholder = isUS ? '티커 (예: AAPL)' : '종목코드 (예: 005930)';
+  document.getElementById('accumAmount').step = isUS ? '1' : '1000';
+  document.getElementById('accumAmount').min = isUS ? '1' : '1000';
+}
+
 async function addAccumTarget() {
-  const symbol = document.getElementById('accumSymbol').value.trim();
-  const amount = parseInt(document.getElementById('accumAmount').value, 10);
-  if (!symbol || isNaN(amount) || amount < 1000) {
-    alert('종목코드와 1,000원 이상의 금액을 입력하세요.');
+  const symbol = document.getElementById('accumSymbol').value.trim().toUpperCase();
+  const market = document.getElementById('accumMarket').value;
+  const amount = parseFloat(document.getElementById('accumAmount').value);
+  const isUS = market !== 'KRX';
+  const minAmount = isUS ? 1 : 1000;
+  if (!symbol || isNaN(amount) || amount < minAmount) {
+    alert(`종목코드와 ${isUS ? '1 USD' : '1,000원'} 이상의 금액을 입력하세요.`);
     return;
   }
-  const newTargets = [...accumTargets.map(t => ({ symbol: t.symbol, amount: t.amount })),
-                     { symbol, amount }];
+  const newTargets = [...accumTargets.map(t => ({ symbol: t.symbol, amount: t.amount, market: t.market ?? 'KRX' })),
+                     { symbol, amount, market }];
   const res = await fetch('/api/accumulation/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -274,7 +287,7 @@ async function addAccumTarget() {
 async function removeAccumTarget(idx) {
   const newTargets = accumTargets
     .filter((_, i) => i !== idx)
-    .map(t => ({ symbol: t.symbol, amount: t.amount }));
+    .map(t => ({ symbol: t.symbol, amount: t.amount, market: t.market ?? 'KRX' }));
   await fetch('/api/accumulation/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -283,17 +296,25 @@ async function removeAccumTarget(idx) {
   await fetchAccumulation();
 }
 
-async function buyNow(symbol, amount) {
-  if (!confirm(`[${symbol}] ${Number(amount).toLocaleString('ko-KR')}원어치 지금 매수하시겠습니까?`)) return;
+async function buyNow(symbol, amount, market = 'KRX') {
+  const isUS = market !== 'KRX';
+  const amtStr = isUS ? `$${amount}` : `${Number(amount).toLocaleString('ko-KR')}원`;
+  if (!confirm(`[${symbol}] ${amtStr}어치 지금 매수하시겠습니까?`)) return;
   try {
     const res = await fetch('/api/accumulation/buy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbol, amount }),
+      body: JSON.stringify({ symbol, amount, market }),
     });
     const d = await res.json();
     if (d.status === 'ok') {
-      alert(`매수 완료\n${d.name}(${d.symbol}) ${d.qty}주\n@ ${Number(d.price).toLocaleString('ko-KR')}원 ≈ ${Number(d.actual_amount).toLocaleString('ko-KR')}원`);
+      const priceStr = d.currency === 'USD'
+        ? `$${Number(d.price).toFixed(2)}`
+        : `${Number(d.price).toLocaleString('ko-KR')}원`;
+      const actualStr = d.currency === 'USD'
+        ? `$${Number(d.actual_amount).toFixed(2)}`
+        : `${Number(d.actual_amount).toLocaleString('ko-KR')}원`;
+      alert(`매수 완료\n${d.name}(${d.symbol}) ${d.qty}주\n@ ${priceStr} ≈ ${actualStr}`);
     } else {
       alert(`매수 실패: ${d.error}`);
     }
@@ -337,7 +358,12 @@ function renderWatchlist(d) {
   }
 
   const rows = items.map(item => {
-    const nameCell = `<span class="cell-symbol">${esc(item.symbol)}</span><span class="cell-name">${esc(item.name ?? '')}</span>`;
+    const isUS = item.market_type === 'US';
+    const mBadge = isUS
+      ? `<span class="market-badge market-badge--us">US</span>`
+      : `<span class="market-badge market-badge--kr">KR</span>`;
+    const nameCell = `${mBadge}<span class="cell-symbol">${esc(item.symbol)}</span><span class="cell-name">${esc(item.name ?? '')}</span>`;
+
     if (item.error) {
       return `<tr>
         <td>${nameCell}</td>
@@ -349,12 +375,13 @@ function renderWatchlist(d) {
     }
     const rc   = item.change_rate > 0.05 ? 'profit-pos' : item.change_rate < -0.05 ? 'profit-neg' : 'profit-nil';
     const sign = item.change_rate > 0 ? '+' : '';
+    const priceStr = isUS ? usd(item.price) : krw(item.price);
     const passedBadge = item.passed
       ? `<span class="screener-badge screener-pass">통과</span>`
       : `<span class="screener-badge screener-fail" title="${esc(item.fail_reason ?? '')}">${esc(item.fail_reason ?? '제외')}</span>`;
     return `<tr>
       <td>${nameCell}</td>
-      <td>${krw(item.price)}</td>
+      <td>${priceStr}</td>
       <td class="${rc}">${sign}${Number(item.change_rate).toFixed(2)}%</td>
       <td>${Number(item.volume).toLocaleString('ko-KR')}</td>
       <td>${passedBadge}</td>
@@ -366,7 +393,7 @@ function renderWatchlist(d) {
       <table class="data-table watchlist-table">
         <thead>
           <tr>
-            <th>종목코드</th><th>현재가</th><th>등락률</th><th>거래량</th><th>스크리너</th>
+            <th>종목</th><th>현재가</th><th>등락률</th><th>거래량</th><th>스크리너</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>

@@ -93,7 +93,13 @@
         <div id="watchlistContainer">
           <div class="empty-holdings">감시 종목 데이터를 불러오는 중...</div>
         </div>
-        <div class="watchlist-updated" id="watchlistUpdated"></div>
+        <div class="watchlist-footer">
+          <span class="watchlist-updated" id="watchlistUpdated"></span>
+          <span class="market-legend">
+            <span class="market-badge market-badge--kr">KR</span> 한국 &nbsp;
+            <span class="market-badge market-badge--us">US</span> 미국
+          </span>
+        </div>
       </div>
     </section>
 
@@ -113,8 +119,15 @@
           <div class="empty-holdings">모으기 종목이 없습니다. 아래에서 추가하세요.</div>
         </div>
         <div class="accum-add-row">
-          <input class="accum-input" type="text" id="accumSymbol" placeholder="종목코드 (예: 005930)" maxlength="6">
-          <input class="accum-input" type="number" id="accumAmount" placeholder="1회 금액 (원)" min="1000" step="1000">
+          <select class="accum-input accum-select" id="accumMarket" onchange="onAccumMarketChange()">
+            <option value="KRX">한국 (KRW)</option>
+            <option value="NASDAQ">미국 NASDAQ (USD)</option>
+            <option value="NYSE">미국 NYSE (USD)</option>
+            <option value="AMEX">미국 AMEX (USD)</option>
+          </select>
+          <input class="accum-input" type="text" id="accumSymbol" placeholder="종목코드" maxlength="10">
+          <input class="accum-input" type="number" id="accumAmount" placeholder="1회 금액" min="1" step="1">
+          <span class="accum-currency" id="accumCurrencyLabel">원</span>
           <button class="btn-outline" onclick="addAccumTarget()">+ 추가</button>
         </div>
       </div>

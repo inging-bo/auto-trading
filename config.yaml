@@ -1,10 +1,16 @@
 # ────────────────────────────────────────────
 # 전략 선택: ma_cross / rsi / bollinger / volatility_breakout
 # ────────────────────────────────────────────
-strategy: rsi
+strategy: volatility_breakout
 
 # ────────────────────────────────────────────
-# 종목 탐색 모드
+# 거래 시장
+# KR: 한국만 / US: 미국만 / BOTH: 양쪽
+# ────────────────────────────────────────────
+market: BOTH
+
+# ────────────────────────────────────────────
+# 종목 탐색 모드 (한국 전용)
 # false: 감시 목록(watchlist)에서만 탐색
 # true : 거래량 상위 전체 시장에서 자동 탐색
 # ────────────────────────────────────────────
@@ -47,12 +53,31 @@ screener:
     - "005380"             # 현대차
 
 # ────────────────────────────────────────────
+# 미국 주식 감시 종목 (심볼.거래소 형식: NASD/NYSE/AMEX)
+# ────────────────────────────────────────────
+us_screener:
+  min_volume: 1000000          # 최소 거래량
+  max_stocks: 3                # 최대 선택 종목 수
+  watchlist:
+    - "AAPL.NASD"              # Apple
+    - "MSFT.NASD"              # Microsoft
+    - "NVDA.NASD"              # NVIDIA
+    - "TSLA.NASD"              # Tesla
+    - "AMZN.NASD"              # Amazon
+    - "GOOGL.NASD"             # Alphabet
+    - "META.NASD"              # Meta
+    - "NFLX.NASD"              # Netflix
+    - "AMD.NASD"               # AMD
+    - "INTC.NASD"              # Intel
+
+# ────────────────────────────────────────────
 # 리스크 관리
 # ────────────────────────────────────────────
 risk:
-  max_buy_amount: 500000   # 1회 최대 매수금액 (원)
-  stop_loss_pct: -5.0      # 손절 기준 (%)
-  take_profit_pct: 10.0    # 익절 기준 (%)
+  max_buy_amount: 500000       # KR 1회 최대 매수금액 (원)
+  us_max_buy_amount_usd: 300   # US 1회 최대 매수금액 (USD)
+  stop_loss_pct: -5.0          # 손절 기준 (%)
+  take_profit_pct: 10.0        # 익절 기준 (%)
 
 # ────────────────────────────────────────────
 # 전략별 파라미터
