@@ -183,6 +183,78 @@ function renderHoldings(list) {
   container.innerHTML = html;
 }
 
+// ── Watchlist ────────────────────────────────────────────
+async function fetchWatchlist() {
+  try {
+    const res = await fetch('/api/watchlist');
+    const d = await res.json();
+    renderWatchlist(d);
+  } catch {/* silently retry */ }
+}
+
+async function refreshWatchlist() {
+  const btn = document.getElementById('watchlistRefreshBtn');
+  btn.classList.add('spinning');
+  try {
+    const res = await fetch('/api/watchlist/refresh');
+    const d = await res.json();
+    renderWatchlist(d);
+  } catch {/* silently retry */ }
+  setTimeout(() => btn.classList.remove('spinning'), 600);
+}
+
+function renderWatchlist(d) {
+  const container  = document.getElementById('watchlistContainer');
+  const badge      = document.getElementById('watchlistCount');
+  const updatedEl  = document.getElementById('watchlistUpdated');
+  const items      = d.items ?? [];
+
+  badge.textContent = items.length;
+  if (d.updated_at) updatedEl.textContent = `마지막 업데이트: ${d.updated_at}`;
+
+  if (!items.length) {
+    container.innerHTML = `<div class="empty-holdings">감시 종목이 없습니다</div>`;
+    return;
+  }
+
+  const rows = items.map(item => {
+    const nameCell = `<span class="cell-symbol">${esc(item.symbol)}</span><span class="cell-name">${esc(item.name ?? '')}</span>`;
+    if (item.error) {
+      return `<tr>
+        <td>${nameCell}</td>
+        <td class="profit-nil">—</td>
+        <td class="profit-nil">—</td>
+        <td class="profit-nil">—</td>
+        <td><span class="screener-badge screener-fail">미조회</span></td>
+      </tr>`;
+    }
+    const rc   = item.change_rate > 0.05 ? 'profit-pos' : item.change_rate < -0.05 ? 'profit-neg' : 'profit-nil';
+    const sign = item.change_rate > 0 ? '+' : '';
+    const passedBadge = item.passed
+      ? `<span class="screener-badge screener-pass">통과</span>`
+      : `<span class="screener-badge screener-fail" title="${esc(item.fail_reason ?? '')}">${esc(item.fail_reason ?? '제외')}</span>`;
+    return `<tr>
+      <td>${nameCell}</td>
+      <td>${krw(item.price)}</td>
+      <td class="${rc}">${sign}${Number(item.change_rate).toFixed(2)}%</td>
+      <td>${Number(item.volume).toLocaleString('ko-KR')}</td>
+      <td>${passedBadge}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table class="data-table watchlist-table">
+        <thead>
+          <tr>
+            <th>종목코드</th><th>현재가</th><th>등락률</th><th>거래량</th><th>스크리너</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 // ── Logs ─────────────────────────────────────────────────
 async function fetchLogs() {
   try {
@@ -258,10 +330,12 @@ function updateClock() {
 // ── Init ─────────────────────────────────────────────────
 fetchStatus();
 fetchBalance();
+fetchWatchlist();
 fetchLogs();
 updateClock();
 
-setInterval(fetchStatus,  3_000);
-setInterval(fetchLogs,    5_000);
-setInterval(fetchBalance, 60_000);
-setInterval(updateClock,  1_000);
+setInterval(fetchStatus,    3_000);
+setInterval(fetchLogs,      5_000);
+setInterval(fetchBalance,  60_000);
+setInterval(fetchWatchlist, 60_000);
+setInterval(updateClock,    1_000);

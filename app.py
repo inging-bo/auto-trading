@@ -11,6 +11,24 @@ from flask import Flask, jsonify, render_template, request
 from kis_client import KisClient
 from strategies import STRATEGY_MAP
 
+STOCK_NAMES: dict[str, str] = {
+    "005930": "삼성전자",
+    "000660": "SK하이닉스",
+    "035420": "NAVER",
+    "035720": "카카오",
+    "051910": "LG화학",
+    "006400": "삼성SDI",
+    "207940": "삼성바이오로직스",
+    "068270": "셀트리온",
+    "105560": "KB금융",
+    "055550": "신한지주",
+    "003550": "LG",
+    "066570": "LG전자",
+    "028260": "삼성물산",
+    "012330": "현대모비스",
+    "005380": "현대차",
+}
+
 app = Flask(__name__)
 
 # ── 로그 캡처 ─────────────────────────────────────────────
@@ -48,6 +66,11 @@ _balance_cache: dict = {"data": None, "ts": 0.0}
 _cache_lock = threading.Lock()
 CACHE_TTL = 60
 
+# ── 감시종목 캐시 ──────────────────────────────────────────
+_watchlist_cache: dict = {"data": None, "ts": 0.0}
+_watchlist_lock = threading.Lock()
+WATCHLIST_CACHE_TTL = 60
+
 
 def _fetch_balance_from_api() -> dict:
     config = _load_config()
@@ -71,6 +94,69 @@ def get_balance_cached(force: bool = False) -> dict:
     with _cache_lock:
         _balance_cache["data"] = data
         _balance_cache["ts"] = time.time()
+    return data
+
+
+def _fetch_watchlist_from_api() -> dict:
+    config = _load_config()
+    cfg = config.get("screener", {})
+    watchlist: list[str] = cfg.get("watchlist", [])
+    min_volume: int = cfg.get("min_volume", 500000)
+    min_price: int = cfg.get("min_price", 5000)
+    max_price: int = cfg.get("max_price", 200000)
+
+    # config 종목을 항상 채워 두어 API 실패 시에도 목록은 표시
+    items = [{"symbol": s, "name": STOCK_NAMES.get(s, s), "error": True} for s in watchlist]
+
+    try:
+        client = KisClient(virtual=config.get("virtual", False))
+        client.connect()
+        filled = []
+        for symbol in watchlist:
+            name = STOCK_NAMES.get(symbol, symbol)
+            quote = client.get_quote(symbol)
+            if not quote:
+                filled.append({"symbol": symbol, "name": name, "error": True})
+                continue
+            price = quote["price"]
+            volume = quote["volume"]
+            prev = quote.get("prev_price", price)
+            change_rate = round(((price - prev) / prev * 100) if prev else 0.0, 2)
+
+            fail_reason = None
+            if volume < min_volume:
+                fail_reason = "거래량 부족"
+            elif not (min_price <= price <= max_price):
+                fail_reason = "가격 범위 초과"
+
+            filled.append({
+                "symbol": symbol,
+                "name": name,
+                "price": price,
+                "volume": volume,
+                "change_rate": change_rate,
+                "passed": fail_reason is None,
+                "fail_reason": fail_reason,
+            })
+        items = filled
+    except Exception as e:
+        logger.error(f"감시종목 조회 실패: {e}")
+
+    return {
+        "items": items,
+        "updated_at": datetime.now().strftime("%H:%M:%S"),
+    }
+
+
+def get_watchlist_cached(force: bool = False) -> dict:
+    now = time.time()
+    with _watchlist_lock:
+        if not force and _watchlist_cache["data"] and now - _watchlist_cache["ts"] < WATCHLIST_CACHE_TTL:
+            return _watchlist_cache["data"]
+    data = _fetch_watchlist_from_api()
+    with _watchlist_lock:
+        _watchlist_cache["data"] = data
+        _watchlist_cache["ts"] = time.time()
     return data
 
 
@@ -168,6 +254,16 @@ def api_stop():
         return jsonify({"status": "not_running"})
     bot.stop_event.set()
     return jsonify({"status": "stopped"})
+
+
+@app.route("/api/watchlist")
+def api_watchlist():
+    return jsonify(get_watchlist_cached())
+
+
+@app.route("/api/watchlist/refresh")
+def api_watchlist_refresh():
+    return jsonify(get_watchlist_cached(force=True))
 
 
 @app.route("/api/strategy", methods=["POST"])

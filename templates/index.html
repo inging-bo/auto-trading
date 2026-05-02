@@ -76,6 +76,27 @@
       </div>
     </section>
 
+    <!-- ── SECTION: 감시 종목 ── -->
+    <section class="section section-light section-divider">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title no-mb">
+            감시 종목
+            <span class="count-badge" id="watchlistCount">0</span>
+          </h2>
+          <button class="btn-icon" id="watchlistRefreshBtn" onclick="refreshWatchlist()" title="새로고침">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.06-3.41L9 7h6V1l-1.35 1.35z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div id="watchlistContainer">
+          <div class="empty-holdings">감시 종목 데이터를 불러오는 중...</div>
+        </div>
+        <div class="watchlist-updated" id="watchlistUpdated"></div>
+      </div>
+    </section>
+
     <!-- ── SECTION: 전략 설정 (dark) ── -->
     <section class="section section-dark">
       <div class="container">
