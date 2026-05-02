@@ -86,6 +86,14 @@ async function fetchStatus() {
     document.getElementById('cfgInterval').textContent = `${d.interval}분마다`;
     document.getElementById('cfgMode').textContent     = d.virtual ? '모의투자' : '실전투자';
 
+    // Scan mode button
+    const scanBtn    = document.getElementById('scanModeBtn');
+    const notice     = document.getElementById('universeNotice');
+    const isDynamic  = !!d.dynamic_universe;
+    scanBtn.textContent = isDynamic ? '전체 시장' : '감시 목록';
+    scanBtn.classList.toggle('scan-mode-btn--active', isDynamic);
+    notice.style.display = isDynamic ? 'flex' : 'none';
+
     // Strategy pills
     document.querySelectorAll('.strategy-pill').forEach(pill => {
       pill.classList.toggle('active', pill.dataset.strategy === d.strategy);
@@ -181,6 +189,117 @@ function renderHoldings(list) {
   if (kr.length) html += tableSection(kr, '한국 주식', krw);
   if (us.length) html += tableSection(us, '미국 주식', usd);
   container.innerHTML = html;
+}
+
+// ── Accumulation (모으기) ────────────────────────────────
+let accumTargets = [];
+
+async function fetchAccumulation() {
+  try {
+    const res = await fetch('/api/accumulation');
+    const d = await res.json();
+    renderAccumulation(d);
+  } catch {/* silently retry */ }
+}
+
+function renderAccumulation(d) {
+  accumTargets = d.targets ?? [];
+  const toggle = document.getElementById('accumToggle');
+  const label  = document.getElementById('accumToggleLabel');
+  toggle.checked    = !!d.enabled;
+  label.textContent = d.enabled ? '활성' : '비활성';
+
+  const container = document.getElementById('accumContainer');
+  if (!accumTargets.length) {
+    container.innerHTML = `<div class="empty-holdings">모으기 종목이 없습니다. 아래에서 추가하세요.</div>`;
+    return;
+  }
+
+  const rows = accumTargets.map((t, i) => `
+    <tr>
+      <td>
+        <span class="cell-symbol">${esc(t.symbol)}</span>
+        <span class="cell-name">${esc(t.name ?? '')}</span>
+      </td>
+      <td>${Number(t.amount).toLocaleString('ko-KR')}원</td>
+      <td>
+        <button class="btn-accum-buy" onclick="buyNow('${esc(t.symbol)}', ${t.amount})">지금 매수</button>
+      </td>
+      <td>
+        <button class="btn-accum-del" onclick="removeAccumTarget(${i})">×</button>
+      </td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table class="data-table accum-table">
+        <thead>
+          <tr><th>종목</th><th>1회 금액</th><th></th><th></th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function toggleAccumulation(enabled) {
+  document.getElementById('accumToggleLabel').textContent = enabled ? '활성' : '비활성';
+  await fetch('/api/accumulation/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+async function addAccumTarget() {
+  const symbol = document.getElementById('accumSymbol').value.trim();
+  const amount = parseInt(document.getElementById('accumAmount').value, 10);
+  if (!symbol || isNaN(amount) || amount < 1000) {
+    alert('종목코드와 1,000원 이상의 금액을 입력하세요.');
+    return;
+  }
+  const newTargets = [...accumTargets.map(t => ({ symbol: t.symbol, amount: t.amount })),
+                     { symbol, amount }];
+  const res = await fetch('/api/accumulation/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targets: newTargets }),
+  });
+  if (res.ok) {
+    document.getElementById('accumSymbol').value = '';
+    document.getElementById('accumAmount').value = '';
+    await fetchAccumulation();
+  }
+}
+
+async function removeAccumTarget(idx) {
+  const newTargets = accumTargets
+    .filter((_, i) => i !== idx)
+    .map(t => ({ symbol: t.symbol, amount: t.amount }));
+  await fetch('/api/accumulation/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targets: newTargets }),
+  });
+  await fetchAccumulation();
+}
+
+async function buyNow(symbol, amount) {
+  if (!confirm(`[${symbol}] ${Number(amount).toLocaleString('ko-KR')}원어치 지금 매수하시겠습니까?`)) return;
+  try {
+    const res = await fetch('/api/accumulation/buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, amount }),
+    });
+    const d = await res.json();
+    if (d.status === 'ok') {
+      alert(`매수 완료\n${d.name}(${d.symbol}) ${d.qty}주\n@ ${Number(d.price).toLocaleString('ko-KR')}원 ≈ ${Number(d.actual_amount).toLocaleString('ko-KR')}원`);
+    } else {
+      alert(`매수 실패: ${d.error}`);
+    }
+  } catch (e) {
+    alert('오류: ' + e.message);
+  }
 }
 
 // ── Watchlist ────────────────────────────────────────────
@@ -300,6 +419,29 @@ async function toggleBot() {
   }
 }
 
+// ── Scan mode ────────────────────────────────────────────
+async function toggleScanMode() {
+  if (isRunning) {
+    alert('봇이 실행 중에는 탐색 모드를 변경할 수 없습니다.\n먼저 봇을 중지하세요.');
+    return;
+  }
+  const btn = document.getElementById('scanModeBtn');
+  const isDynamic = btn.classList.contains('scan-mode-btn--active');
+  const next = !isDynamic;
+  try {
+    const res = await fetch('/api/scan-mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dynamic: next }),
+    });
+    const d = await res.json();
+    if (d.status === 'ok') await fetchStatus();
+    else alert(d.error ?? '변경 실패');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 // ── Strategy change ──────────────────────────────────────
 async function changeStrategy(strategy) {
   if (isRunning) {
@@ -330,12 +472,14 @@ function updateClock() {
 // ── Init ─────────────────────────────────────────────────
 fetchStatus();
 fetchBalance();
+fetchAccumulation();
 fetchWatchlist();
 fetchLogs();
 updateClock();
 
-setInterval(fetchStatus,    3_000);
-setInterval(fetchLogs,      5_000);
-setInterval(fetchBalance,  60_000);
-setInterval(fetchWatchlist, 60_000);
-setInterval(updateClock,    1_000);
+setInterval(fetchStatus,       3_000);
+setInterval(fetchLogs,         5_000);
+setInterval(fetchBalance,     60_000);
+setInterval(fetchAccumulation, 60_000);
+setInterval(fetchWatchlist,   60_000);
+setInterval(updateClock,       1_000);

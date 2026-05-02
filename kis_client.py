@@ -83,6 +83,45 @@ class KisClient:
             logger.warning(f"[{symbol}] 시세 조회 실패: {e}")
             return {}
 
+    def get_universe(self, min_vol: int = 100000) -> list[dict]:
+        """거래량 상위 종목 유니버스를 반환합니다."""
+        self._check_connected()
+        try:
+            result = self._kis.fetch(
+                "/uapi/domestic-stock/v1/ranking/volume",
+                api="FHPST01710000",
+                params={
+                    "fid_cond_mrkt_div_code": "J",
+                    "fid_cond_scr_div_code": "20171",
+                    "fid_input_iscd": "0000",
+                    "fid_div_cls_code": "0",
+                    "fid_blng_cls_code": "0",
+                    "fid_trgt_cls_code": "111111111",
+                    "fid_trgt_exls_cls_code": "000000",
+                    "fid_input_price_1": "",
+                    "fid_input_price_2": "",
+                    "fid_vol_cnt": str(min_vol) if min_vol else "",
+                    "fid_input_date_1": "",
+                },
+            )
+            rows = result.get("output", []) or []
+            universe = []
+            for s in rows:
+                symbol = str(s.get("mksc_shrn_iscd", "")).strip()
+                if not symbol:
+                    continue
+                universe.append({
+                    "symbol": symbol,
+                    "name": str(s.get("hts_kor_isnm", "")).strip(),
+                    "price": float(s.get("stck_prpr", 0) or 0),
+                    "volume": int(s.get("acml_vol", 0) or 0),
+                })
+            logger.info(f"유니버스 조회 완료: {len(universe)}개 종목")
+            return universe
+        except Exception as e:
+            logger.warning(f"유니버스 조회 실패: {e}")
+            return []
+
     def buy(self, symbol: str, qty: int) -> KisOrder | None:
         """시장가 매수 주문을 실행합니다."""
         self._check_connected()

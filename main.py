@@ -1,5 +1,7 @@
+import json
 import logging
 import math
+import os
 import time
 import yaml
 import schedule
@@ -84,6 +86,43 @@ class Trader:
         qty = math.floor(max_amount / price)
         return max(qty, 1)
 
+    def _load_accumulation(self) -> dict:
+        if os.path.exists("accumulation.json"):
+            try:
+                with open("accumulation.json", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return self.config.get("accumulation", {"enabled": False, "targets": []})
+
+    def _run_accumulation(self):
+        """모으기: 설정 종목을 지정 금액만큼 매수합니다."""
+        acc = self._load_accumulation()
+        if not acc.get("enabled", False):
+            return
+        targets = acc.get("targets", [])
+        if not targets:
+            return
+        logger.info("─── 모으기 실행 ───")
+        for t in targets:
+            symbol = str(t.get("symbol", "")).strip()
+            amount = int(t.get("amount", 0))
+            if not symbol or amount <= 0:
+                continue
+            quote = self.client.get_quote(symbol)
+            if not quote:
+                logger.warning(f"[{symbol}] 모으기: 시세 조회 실패")
+                continue
+            price = quote["price"]
+            qty = math.floor(amount / price)
+            if qty < 1:
+                logger.warning(f"[{symbol}] 모으기: {amount:,}원으로 {price:,}원짜리 1주 미만")
+                continue
+            actual = qty * price
+            logger.info(f"[{symbol}] 모으기 매수 {qty}주 @ {price:,}원 (≈{actual:,}원)")
+            self.client.buy(symbol, qty)
+        logger.info("─── 모으기 완료 ───")
+
     def run_once(self):
         """매매 사이클 1회 실행"""
         if not is_market_open():
@@ -140,7 +179,10 @@ class Trader:
             else:
                 logger.info(f"[{symbol}] {signal} - 관망")
 
-        # 4. 잔고 출력
+        # 4. 모으기
+        self._run_accumulation()
+
+        # 5. 잔고 출력
         balance = self.client.get_balance()
         logger.info(
             f"잔고: 현금 {balance['cash']:,.0f}원 | 총자산 {balance['total_assets']:,.0f}원"

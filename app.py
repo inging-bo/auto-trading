@@ -1,3 +1,6 @@
+import json
+import math
+import os
 import re
 import threading
 import time
@@ -160,6 +163,25 @@ def get_watchlist_cached(force: bool = False) -> dict:
     return data
 
 
+# ── 모으기 설정 파일 ──────────────────────────────────────
+ACCUM_FILE = "accumulation.json"
+
+
+def _load_accumulation() -> dict:
+    if not os.path.exists(ACCUM_FILE):
+        return {"enabled": False, "targets": []}
+    try:
+        with open(ACCUM_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"enabled": False, "targets": []}
+
+
+def _save_accumulation(data: dict):
+    with open(ACCUM_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
 # ── Config 유틸 ───────────────────────────────────────────
 def _load_config() -> dict:
     with open("config.yaml", encoding="utf-8") as f:
@@ -172,6 +194,20 @@ def _save_strategy(strategy: str):
         content = f.read()
     content = re.sub(
         r"^(strategy:\s*).*$", f"\\g<1>{strategy}", content, flags=re.MULTILINE
+    )
+    with open("config.yaml", "w", encoding="utf-8") as f:
+        f.write(content)
+
+
+def _save_dynamic_universe(enabled: bool):
+    """config.yaml의 use_dynamic_universe 값만 교체합니다 (주석 보존)."""
+    with open("config.yaml", encoding="utf-8") as f:
+        content = f.read()
+    content = re.sub(
+        r"^(use_dynamic_universe:\s*).*$",
+        f"\\g<1>{'true' if enabled else 'false'}",
+        content,
+        flags=re.MULTILINE,
     )
     with open("config.yaml", "w", encoding="utf-8") as f:
         f.write(content)
@@ -218,6 +254,7 @@ def api_status():
         "strategy": config.get("strategy", "rsi"),
         "virtual": config.get("virtual", False),
         "interval": config.get("interval_minutes", 5),
+        "dynamic_universe": config.get("use_dynamic_universe", False),
     })
 
 
@@ -275,6 +312,72 @@ def api_strategy():
     _save_strategy(strategy)
     logger.info(f"전략 변경: {strategy}")
     return jsonify({"status": "ok", "strategy": strategy})
+
+
+@app.route("/api/scan-mode", methods=["POST"])
+def api_scan_mode():
+    if bot.running:
+        return jsonify({"error": "봇이 실행 중에는 탐색 모드를 변경할 수 없습니다."}), 400
+    data = request.get_json() or {}
+    enabled = bool(data.get("dynamic", False))
+    _save_dynamic_universe(enabled)
+    mode = "전체 시장 자동 탐색" if enabled else "감시 목록"
+    logger.info(f"탐색 모드 변경: {mode}")
+    return jsonify({"status": "ok", "dynamic": enabled})
+
+
+@app.route("/api/accumulation")
+def api_accumulation_get():
+    acc = _load_accumulation()
+    for t in acc.get("targets", []):
+        t["name"] = STOCK_NAMES.get(str(t.get("symbol", "")), "")
+    return jsonify(acc)
+
+
+@app.route("/api/accumulation/config", methods=["POST"])
+def api_accumulation_config():
+    data = request.get_json() or {}
+    acc = _load_accumulation()
+    if "enabled" in data:
+        acc["enabled"] = bool(data["enabled"])
+    if "targets" in data:
+        acc["targets"] = [
+            {"symbol": str(t["symbol"]).strip(), "amount": int(t["amount"])}
+            for t in data["targets"]
+            if t.get("symbol") and int(t.get("amount", 0)) > 0
+        ]
+    _save_accumulation(acc)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/accumulation/buy", methods=["POST"])
+def api_accumulation_buy():
+    """지정 종목을 지정 금액만큼 즉시 매수합니다."""
+    data = request.get_json() or {}
+    symbol = str(data.get("symbol", "")).strip()
+    amount = int(data.get("amount", 0))
+    if not symbol or amount <= 0:
+        return jsonify({"error": "종목코드와 금액을 입력하세요."}), 400
+    config = _load_config()
+    try:
+        client = KisClient(virtual=config.get("virtual", False))
+        client.connect()
+        quote = client.get_quote(symbol)
+        if not quote:
+            return jsonify({"error": f"[{symbol}] 시세 조회 실패"}), 500
+        price = quote["price"]
+        qty = math.floor(amount / price)
+        if qty < 1:
+            return jsonify({"error": f"{amount:,}원으로 {price:,}원짜리 종목 1주 미만입니다."}), 400
+        actual = qty * price
+        client.buy(symbol, qty)
+        name = STOCK_NAMES.get(symbol, symbol)
+        logger.info(f"[{symbol}] 모으기 즉시매수 {qty}주 @ {price:,}원 (≈{actual:,}원)")
+        return jsonify({"status": "ok", "symbol": symbol, "name": name,
+                        "qty": qty, "price": price, "actual_amount": actual})
+    except Exception as e:
+        logger.error(f"모으기 즉시매수 실패: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
