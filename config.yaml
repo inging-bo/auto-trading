@@ -1,7 +1,7 @@
 # ────────────────────────────────────────────
 # 전략 선택: ma_cross / rsi / bollinger / volatility_breakout
 # ────────────────────────────────────────────
-strategy: volatility_breakout
+strategy: rsi
 
 # ────────────────────────────────────────────
 # 거래 시장

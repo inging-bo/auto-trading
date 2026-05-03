@@ -343,27 +343,9 @@ async function refreshWatchlist() {
   setTimeout(() => btn.classList.remove('spinning'), 600);
 }
 
-function renderWatchlist(d) {
-  const container  = document.getElementById('watchlistContainer');
-  const badge      = document.getElementById('watchlistCount');
-  const updatedEl  = document.getElementById('watchlistUpdated');
-  const items      = d.items ?? [];
-
-  badge.textContent = items.length;
-  if (d.updated_at) updatedEl.textContent = `마지막 업데이트: ${d.updated_at}`;
-
-  if (!items.length) {
-    container.innerHTML = `<div class="empty-holdings">감시 종목이 없습니다</div>`;
-    return;
-  }
-
+function buildWatchlistTable(items, isUS) {
   const rows = items.map(item => {
-    const isUS = item.market_type === 'US';
-    const mBadge = isUS
-      ? `<span class="market-badge market-badge--us">US</span>`
-      : `<span class="market-badge market-badge--kr">KR</span>`;
-    const nameCell = `${mBadge}<span class="cell-symbol">${esc(item.symbol)}</span><span class="cell-name">${esc(item.name ?? '')}</span>`;
-
+    const nameCell = `<span class="cell-symbol">${esc(item.symbol)}</span><span class="cell-name">${esc(item.name ?? '')}</span>`;
     if (item.error) {
       return `<tr>
         <td>${nameCell}</td>
@@ -373,8 +355,8 @@ function renderWatchlist(d) {
         <td><span class="screener-badge screener-fail">미조회</span></td>
       </tr>`;
     }
-    const rc   = item.change_rate > 0.05 ? 'profit-pos' : item.change_rate < -0.05 ? 'profit-neg' : 'profit-nil';
-    const sign = item.change_rate > 0 ? '+' : '';
+    const rc       = item.change_rate > 0.05 ? 'profit-pos' : item.change_rate < -0.05 ? 'profit-neg' : 'profit-nil';
+    const sign     = item.change_rate > 0 ? '+' : '';
     const priceStr = isUS ? usd(item.price) : krw(item.price);
     const passedBadge = item.passed
       ? `<span class="screener-badge screener-pass">통과</span>`
@@ -388,17 +370,45 @@ function renderWatchlist(d) {
     </tr>`;
   }).join('');
 
-  container.innerHTML = `
+  return `
     <div class="table-wrap">
       <table class="data-table watchlist-table">
         <thead>
-          <tr>
-            <th>종목</th><th>현재가</th><th>등락률</th><th>거래량</th><th>스크리너</th>
-          </tr>
+          <tr><th>종목</th><th>현재가</th><th>등락률</th><th>거래량</th><th>스크리너</th></tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+}
+
+function renderWatchlist(d) {
+  const items   = d.items ?? [];
+  const krItems = items.filter(i => i.market_type === 'KR');
+  const usItems = items.filter(i => i.market_type === 'US');
+
+  document.getElementById('watchlistCount').textContent   = items.length;
+  document.getElementById('watchlistKrCount').textContent = krItems.length;
+  document.getElementById('watchlistUsCount').textContent = usItems.length;
+  if (d.updated_at) document.getElementById('watchlistUpdated').textContent = `마지막 업데이트: ${d.updated_at}`;
+
+  const krSection = document.getElementById('watchlistKrSection');
+  const usSection = document.getElementById('watchlistUsSection');
+
+  krSection.style.display = krItems.length ? '' : 'none';
+  if (krItems.length) {
+    document.getElementById('watchlistKrContainer').innerHTML = buildWatchlistTable(krItems, false);
+  }
+
+  usSection.style.display = usItems.length ? '' : 'none';
+  if (usItems.length) {
+    document.getElementById('watchlistUsContainer').innerHTML = buildWatchlistTable(usItems, true);
+  }
+
+  if (!items.length) {
+    krSection.style.display = '';
+    document.getElementById('watchlistKrContainer').innerHTML = `<div class="empty-holdings">감시 종목이 없습니다</div>`;
+    usSection.style.display = 'none';
+  }
 }
 
 // ── Logs ─────────────────────────────────────────────────

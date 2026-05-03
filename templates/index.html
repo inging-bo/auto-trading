@@ -90,16 +90,32 @@
             </svg>
           </button>
         </div>
-        <div id="watchlistContainer">
-          <div class="empty-holdings">감시 종목 데이터를 불러오는 중...</div>
+
+        <!-- 한국 주식 -->
+        <div id="watchlistKrSection">
+          <div class="watchlist-sub-header">
+            <span class="market-badge market-badge--kr">KR</span>
+            <span class="watchlist-sub-title">한국 주식</span>
+            <span class="count-badge" id="watchlistKrCount">0</span>
+          </div>
+          <div id="watchlistKrContainer">
+            <div class="empty-holdings">데이터를 불러오는 중...</div>
+          </div>
         </div>
-        <div class="watchlist-footer">
-          <span class="watchlist-updated" id="watchlistUpdated"></span>
-          <span class="market-legend">
-            <span class="market-badge market-badge--kr">KR</span> 한국 &nbsp;
-            <span class="market-badge market-badge--us">US</span> 미국
-          </span>
+
+        <!-- 미국 주식 -->
+        <div id="watchlistUsSection" class="watchlist-market-section">
+          <div class="watchlist-sub-header">
+            <span class="market-badge market-badge--us">US</span>
+            <span class="watchlist-sub-title">미국 주식</span>
+            <span class="count-badge" id="watchlistUsCount">0</span>
+          </div>
+          <div id="watchlistUsContainer">
+            <div class="empty-holdings">데이터를 불러오는 중...</div>
+          </div>
         </div>
+
+        <div class="watchlist-updated" id="watchlistUpdated"></div>
       </div>
     </section>
 

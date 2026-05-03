@@ -566,6 +566,19 @@ table { border-collapse: collapse; }
 .btn-accum-del:hover { background: var(--red); color: #fff; border-color: var(--red); }
 
 /* ── Watchlist ──────────────────────────────────────────── */
+.watchlist-sub-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.watchlist-sub-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.watchlist-market-section { margin-top: 36px; }
+
 .watchlist-table thead th:last-child,
 .watchlist-table tbody td:last-child { text-align: left; }
 
