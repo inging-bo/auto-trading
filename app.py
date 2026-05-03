@@ -1,6 +1,3 @@
-import json
-import math
-import os
 import re
 import threading
 import time
@@ -205,25 +202,6 @@ def get_watchlist_cached(force: bool = False) -> dict:
     return data
 
 
-# ── 모으기 설정 파일 ──────────────────────────────────────
-ACCUM_FILE = "accumulation.json"
-
-
-def _load_accumulation() -> dict:
-    if not os.path.exists(ACCUM_FILE):
-        return {"enabled": False, "targets": []}
-    try:
-        with open(ACCUM_FILE, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"enabled": False, "targets": []}
-
-
-def _save_accumulation(data: dict):
-    with open(ACCUM_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
 # ── Config 유틸 ───────────────────────────────────────────
 def _load_config() -> dict:
     with open("config.yaml", encoding="utf-8") as f:
@@ -367,65 +345,6 @@ def api_scan_mode():
     mode = "전체 시장 자동 탐색" if enabled else "감시 목록"
     logger.info(f"탐색 모드 변경: {mode}")
     return jsonify({"status": "ok", "dynamic": enabled})
-
-
-@app.route("/api/accumulation")
-def api_accumulation_get():
-    acc = _load_accumulation()
-    for t in acc.get("targets", []):
-        t["name"] = STOCK_NAMES.get(str(t.get("symbol", "")), "")
-    return jsonify(acc)
-
-
-@app.route("/api/accumulation/config", methods=["POST"])
-def api_accumulation_config():
-    data = request.get_json() or {}
-    acc = _load_accumulation()
-    if "enabled" in data:
-        acc["enabled"] = bool(data["enabled"])
-    if "targets" in data:
-        acc["targets"] = [
-            {"symbol": str(t["symbol"]).strip(), "amount": int(t["amount"])}
-            for t in data["targets"]
-            if t.get("symbol") and int(t.get("amount", 0)) > 0
-        ]
-    _save_accumulation(acc)
-    return jsonify({"status": "ok"})
-
-
-@app.route("/api/accumulation/buy", methods=["POST"])
-def api_accumulation_buy():
-    """지정 종목을 지정 금액만큼 즉시 매수합니다."""
-    data = request.get_json() or {}
-    symbol = str(data.get("symbol", "")).strip()
-    amount = float(data.get("amount", 0))
-    market = str(data.get("market", "KRX"))
-    if not symbol or amount <= 0:
-        return jsonify({"error": "종목코드와 금액을 입력하세요."}), 400
-    is_kr = (market == "KRX")
-    config = _load_config()
-    try:
-        client = KisClient(virtual=config.get("virtual", False))
-        client.connect()
-        quote = client.get_quote(symbol, market=market)
-        if not quote:
-            return jsonify({"error": f"[{symbol}] 시세 조회 실패"}), 500
-        price = quote["price"]
-        qty = math.floor(amount / price)
-        if qty < 1:
-            unit = "원" if is_kr else "USD"
-            return jsonify({"error": f"{amount:,.0f}{unit}으로 1주 미만입니다. (현재가 {price:,.2f})"}), 400
-        actual = qty * price
-        client.buy(symbol, qty, market=market)
-        name = STOCK_NAMES.get(symbol, symbol)
-        price_str = f"{price:,.0f}원" if is_kr else f"${price:.2f}"
-        logger.info(f"[{symbol}] 모으기 즉시매수 {qty}주 @ {price_str}")
-        return jsonify({"status": "ok", "symbol": symbol, "name": name,
-                        "qty": qty, "price": price, "actual_amount": actual,
-                        "currency": "KRW" if is_kr else "USD"})
-    except Exception as e:
-        logger.error(f"모으기 즉시매수 실패: {e}")
-        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

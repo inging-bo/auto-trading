@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import json,sys; d=json.load(sys.stdin); f=d.get('tool_input',{}).get('file_path',''); print('[README] 기능/UI/설정/파일구조 변경 시 README.md 업데이트 필요') if any(f.endswith(e) for e in ('.py','.html','.js','.css','.yaml','.yml')) else None\"",
+            "shell": "powershell"
+          }
+        ]
+      }
+    ]
+  }
+}

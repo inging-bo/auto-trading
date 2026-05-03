@@ -191,138 +191,6 @@ function renderHoldings(list) {
   container.innerHTML = html;
 }
 
-// ── Accumulation (모으기) ────────────────────────────────
-let accumTargets = [];
-
-async function fetchAccumulation() {
-  try {
-    const res = await fetch('/api/accumulation');
-    const d = await res.json();
-    renderAccumulation(d);
-  } catch {/* silently retry */ }
-}
-
-function renderAccumulation(d) {
-  accumTargets = d.targets ?? [];
-  const toggle = document.getElementById('accumToggle');
-  const label  = document.getElementById('accumToggleLabel');
-  toggle.checked    = !!d.enabled;
-  label.textContent = d.enabled ? '활성' : '비활성';
-
-  const container = document.getElementById('accumContainer');
-  if (!accumTargets.length) {
-    container.innerHTML = `<div class="empty-holdings">모으기 종목이 없습니다. 아래에서 추가하세요.</div>`;
-    return;
-  }
-
-  const rows = accumTargets.map((t, i) => {
-    const isUS = t.market && t.market !== 'KRX';
-    const mBadge = isUS
-      ? `<span class="market-badge market-badge--us">US</span>`
-      : `<span class="market-badge market-badge--kr">KR</span>`;
-    const amtStr = isUS
-      ? `$${Number(t.amount).toLocaleString('en-US')}`
-      : `${Number(t.amount).toLocaleString('ko-KR')}원`;
-    return `<tr>
-      <td>${mBadge}<span class="cell-symbol">${esc(t.symbol)}</span><span class="cell-name">${esc(t.name ?? '')}</span></td>
-      <td>${amtStr}</td>
-      <td><button class="btn-accum-buy" onclick="buyNow('${esc(t.symbol)}', ${t.amount}, '${esc(t.market ?? 'KRX')}')">지금 매수</button></td>
-      <td><button class="btn-accum-del" onclick="removeAccumTarget(${i})">×</button></td>
-    </tr>`;
-  }).join('');
-
-  container.innerHTML = `
-    <div class="table-wrap">
-      <table class="data-table accum-table">
-        <thead>
-          <tr><th>종목</th><th>1회 금액</th><th></th><th></th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-}
-
-async function toggleAccumulation(enabled) {
-  document.getElementById('accumToggleLabel').textContent = enabled ? '활성' : '비활성';
-  await fetch('/api/accumulation/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ enabled }),
-  });
-}
-
-function onAccumMarketChange() {
-  const market = document.getElementById('accumMarket').value;
-  const isUS = market !== 'KRX';
-  document.getElementById('accumCurrencyLabel').textContent = isUS ? 'USD' : '원';
-  document.getElementById('accumSymbol').placeholder = isUS ? '티커 (예: AAPL)' : '종목코드 (예: 005930)';
-  document.getElementById('accumAmount').step = isUS ? '1' : '1000';
-  document.getElementById('accumAmount').min = isUS ? '1' : '1000';
-}
-
-async function addAccumTarget() {
-  const symbol = document.getElementById('accumSymbol').value.trim().toUpperCase();
-  const market = document.getElementById('accumMarket').value;
-  const amount = parseFloat(document.getElementById('accumAmount').value);
-  const isUS = market !== 'KRX';
-  const minAmount = isUS ? 1 : 1000;
-  if (!symbol || isNaN(amount) || amount < minAmount) {
-    alert(`종목코드와 ${isUS ? '1 USD' : '1,000원'} 이상의 금액을 입력하세요.`);
-    return;
-  }
-  const newTargets = [...accumTargets.map(t => ({ symbol: t.symbol, amount: t.amount, market: t.market ?? 'KRX' })),
-                     { symbol, amount, market }];
-  const res = await fetch('/api/accumulation/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targets: newTargets }),
-  });
-  if (res.ok) {
-    document.getElementById('accumSymbol').value = '';
-    document.getElementById('accumAmount').value = '';
-    await fetchAccumulation();
-  }
-}
-
-async function removeAccumTarget(idx) {
-  const newTargets = accumTargets
-    .filter((_, i) => i !== idx)
-    .map(t => ({ symbol: t.symbol, amount: t.amount, market: t.market ?? 'KRX' }));
-  await fetch('/api/accumulation/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targets: newTargets }),
-  });
-  await fetchAccumulation();
-}
-
-async function buyNow(symbol, amount, market = 'KRX') {
-  const isUS = market !== 'KRX';
-  const amtStr = isUS ? `$${amount}` : `${Number(amount).toLocaleString('ko-KR')}원`;
-  if (!confirm(`[${symbol}] ${amtStr}어치 지금 매수하시겠습니까?`)) return;
-  try {
-    const res = await fetch('/api/accumulation/buy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbol, amount, market }),
-    });
-    const d = await res.json();
-    if (d.status === 'ok') {
-      const priceStr = d.currency === 'USD'
-        ? `$${Number(d.price).toFixed(2)}`
-        : `${Number(d.price).toLocaleString('ko-KR')}원`;
-      const actualStr = d.currency === 'USD'
-        ? `$${Number(d.actual_amount).toFixed(2)}`
-        : `${Number(d.actual_amount).toLocaleString('ko-KR')}원`;
-      alert(`매수 완료\n${d.name}(${d.symbol}) ${d.qty}주\n@ ${priceStr} ≈ ${actualStr}`);
-    } else {
-      alert(`매수 실패: ${d.error}`);
-    }
-  } catch (e) {
-    alert('오류: ' + e.message);
-  }
-}
-
 // ── Watchlist ────────────────────────────────────────────
 async function fetchWatchlist() {
   try {
@@ -509,14 +377,12 @@ function updateClock() {
 // ── Init ─────────────────────────────────────────────────
 fetchStatus();
 fetchBalance();
-fetchAccumulation();
 fetchWatchlist();
 fetchLogs();
 updateClock();
 
-setInterval(fetchStatus,       3_000);
-setInterval(fetchLogs,         5_000);
-setInterval(fetchBalance,     60_000);
-setInterval(fetchAccumulation, 60_000);
-setInterval(fetchWatchlist,   60_000);
-setInterval(updateClock,       1_000);
+setInterval(fetchStatus,   3_000);
+setInterval(fetchLogs,     5_000);
+setInterval(fetchBalance,  60_000);
+setInterval(fetchWatchlist, 60_000);
+setInterval(updateClock,   1_000);

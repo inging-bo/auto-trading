@@ -457,114 +457,6 @@ table { border-collapse: collapse; }
   color: var(--blue-hover);
 }
 
-/* ── Accumulation (모으기) ──────────────────────────────── */
-.accum-desc {
-  font-size: 13px;
-  color: var(--text-2);
-  margin-bottom: 24px;
-  margin-top: -16px;
-}
-
-.toggle-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
-}
-.toggle-switch input { display: none; }
-
-.toggle-slider {
-  width: 42px;
-  height: 24px;
-  background: var(--border);
-  border-radius: 12px;
-  position: relative;
-  transition: background 0.2s;
-  border: 1px solid var(--border);
-}
-.toggle-slider::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-}
-.toggle-switch input:checked ~ .toggle-slider { background: var(--blue); border-color: var(--blue); }
-.toggle-switch input:checked ~ .toggle-slider::after { transform: translateX(18px); }
-
-.toggle-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
-  min-width: 36px;
-}
-
-.accum-add-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.accum-input {
-  font-family: var(--font);
-  font-size: 13px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 8px 14px;
-  color: var(--text);
-  background: var(--white);
-  outline: none;
-  transition: border-color 0.15s;
-}
-.accum-input:focus { border-color: var(--blue); }
-.accum-input[type="text"]   { width: 180px; }
-.accum-input[type="number"] { width: 160px; }
-
-.accum-table thead th:nth-child(n+2) { text-align: right; }
-.accum-table thead th:nth-child(3),
-.accum-table thead th:nth-child(4)   { text-align: center; width: 80px; }
-.accum-table tbody td:nth-child(3),
-.accum-table tbody td:nth-child(4)   { text-align: center; }
-
-.btn-accum-buy {
-  font-family: var(--font);
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--blue-light);
-  color: var(--blue);
-  border: 1px solid rgba(0,82,255,0.2);
-  border-radius: var(--r-pill);
-  padding: 5px 14px;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.btn-accum-buy:hover { background: var(--blue); color: #fff; }
-
-.btn-accum-del {
-  font-family: var(--font);
-  font-size: 14px;
-  font-weight: 600;
-  background: transparent;
-  color: var(--text-2);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  cursor: pointer;
-  transition: all 0.15s;
-  line-height: 1;
-}
-.btn-accum-del:hover { background: var(--red); color: #fff; border-color: var(--red); }
-
 /* ── Watchlist ──────────────────────────────────────────── */
 .watchlist-sub-header {
   display: flex;
@@ -641,16 +533,6 @@ table { border-collapse: collapse; }
 .market-badge--us {
   background: rgba(0, 82, 255, 0.1);
   color: var(--blue);
-}
-
-.accum-select {
-  cursor: pointer;
-}
-.accum-currency {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
-  min-width: 30px;
 }
 
 /* ── Log ────────────────────────────────────────────────── */

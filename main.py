@@ -1,7 +1,4 @@
-import json
 import logging
-import math
-import os
 import time
 import yaml
 import schedule
@@ -141,50 +138,6 @@ class Trader:
         else:
             logger.info(f"[{symbol}] {signal} - 관망")
 
-    def _load_accumulation(self) -> dict:
-        if os.path.exists("accumulation.json"):
-            try:
-                with open("accumulation.json", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return self.config.get("accumulation", {"enabled": False, "targets": []})
-
-    def _run_accumulation(self):
-        acc = self._load_accumulation()
-        if not acc.get("enabled", False):
-            return
-        targets = acc.get("targets", [])
-        if not targets:
-            return
-        logger.info("─── 모으기 실행 ───")
-        for t in targets:
-            symbol = str(t.get("symbol", "")).strip()
-            amount = float(t.get("amount", 0))
-            market = str(t.get("market", "KRX"))
-            is_kr = (market == "KRX")
-
-            if not symbol or amount <= 0:
-                continue
-
-            quote = self.client.get_quote(symbol, market=market)
-            if not quote:
-                logger.warning(f"[{symbol}] 모으기: 시세 조회 실패")
-                continue
-
-            price = quote["price"]
-            qty = math.floor(amount / price)
-            if qty < 1:
-                unit = "원" if is_kr else "USD"
-                logger.warning(f"[{symbol}] 모으기: {amount:,.0f}{unit}으로 1주 미만 (현재가 {price:,.2f})")
-                continue
-
-            actual = qty * price
-            price_str = f"{price:,.0f}원" if is_kr else f"${price:.2f}"
-            logger.info(f"[{symbol}] 모으기 매수 {qty}주 @ {price_str} (≈{actual:,.0f})")
-            self.client.buy(symbol, qty, market=market)
-        logger.info("─── 모으기 완료 ───")
-
     def run_once(self):
         market_config = self.config.get("market", "KR")
 
@@ -218,10 +171,7 @@ class Trader:
             for target in targets:
                 self._process_target(target)
 
-        # 3. 모으기
-        self._run_accumulation()
-
-        # 4. 잔고 출력
+        # 3. 잔고 출력
         balance = self.client.get_balance()
         logger.info(
             f"잔고: 현금 {balance['cash']:,.0f}원 | 총자산 {balance['total_assets']:,.0f}원"
