@@ -6,178 +6,195 @@
   <title>AutoTrader</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-  <!-- ── HEADER ── -->
-  <header class="header">
-    <div class="header-inner">
-      <div class="logo">
-        <div class="logo-mark"></div>
-        <span class="logo-text">AutoTrader</span>
-      </div>
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <span class="logo-text">AutoTrader</span>
+    </div>
 
-      <div class="header-center">
-        <div class="status-badge">
-          <span class="status-dot" id="statusDot"></span>
-          <span class="status-label" id="statusLabel">연결 중...</span>
-        </div>
-      </div>
-
-      <div class="header-right">
-        <span class="mode-tag" id="modeTag">—</span>
-        <button class="btn-toggle" id="toggleBtn" onclick="toggleBot()">시작하기</button>
+    <div class="header-center">
+      <div class="status-badge">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">연결 중...</span>
       </div>
     </div>
-  </header>
 
-  <main>
+    <div class="header-right">
+      <span class="mode-tag" id="modeTag">—</span>
+      <button class="btn-toggle" id="toggleBtn" onclick="toggleBot()">시작하기</button>
+    </div>
+  </div>
+</header>
 
-    <!-- ── SECTION: 계좌 현황 ── -->
-    <section class="section section-light">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">계좌 현황</h2>
-          <button class="btn-icon" id="refreshBtn" onclick="refreshBalance()" title="새로고침">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.06-3.41L9 7h6V1l-1.35 1.35z" fill="currentColor"/>
-            </svg>
-          </button>
-        </div>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">현금 잔고</div>
-            <div class="stat-value" id="cashValue">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">주식 평가금액</div>
-            <div class="stat-value" id="stockValue">—</div>
-          </div>
-          <div class="stat-card stat-card--accent">
-            <div class="stat-label">총 자산</div>
-            <div class="stat-value accent" id="totalValue">—</div>
-          </div>
-        </div>
-      </div>
-    </section>
+<main>
 
-    <!-- ── SECTION: 보유종목 ── -->
-    <section class="section section-light section-divider">
-      <div class="container">
-        <h2 class="section-title">
-          보유종목
-          <span class="count-badge" id="holdingsCount">0</span>
-        </h2>
-        <div id="holdingsContainer">
-          <div class="empty-holdings">보유 종목이 없습니다</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── SECTION: 감시 종목 ── -->
-    <section class="section section-light section-divider">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title no-mb">
-            감시 종목
-            <span class="count-badge" id="watchlistCount">0</span>
-          </h2>
-          <button class="btn-icon" id="watchlistRefreshBtn" onclick="refreshWatchlist()" title="새로고침">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.06-3.41L9 7h6V1l-1.35 1.35z" fill="currentColor"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- 한국 주식 -->
-        <div id="watchlistKrSection">
-          <div class="watchlist-sub-header">
-            <span class="market-badge market-badge--kr">KR</span>
-            <span class="watchlist-sub-title">한국 주식</span>
-            <span class="count-badge" id="watchlistKrCount">0</span>
-          </div>
-          <div id="watchlistKrContainer">
-            <div class="empty-holdings">데이터를 불러오는 중...</div>
-          </div>
-        </div>
-
-        <!-- 미국 주식 -->
-        <div id="watchlistUsSection" class="watchlist-market-section">
-          <div class="watchlist-sub-header">
-            <span class="market-badge market-badge--us">US</span>
-            <span class="watchlist-sub-title">미국 주식</span>
-            <span class="count-badge" id="watchlistUsCount">0</span>
-          </div>
-          <div id="watchlistUsContainer">
-            <div class="empty-holdings">데이터를 불러오는 중...</div>
-          </div>
-        </div>
-
-        <div class="watchlist-updated" id="watchlistUpdated"></div>
-      </div>
-    </section>
-
-    <!-- ── SECTION: 전략 설정 (dark) ── -->
-    <section class="section section-dark">
-      <div class="container">
-        <h2 class="section-title light">전략 설정</h2>
-        <div class="strategy-pills" id="strategyPills">
-          <button class="strategy-pill" data-strategy="rsi" onclick="changeStrategy('rsi')">RSI</button>
-          <button class="strategy-pill" data-strategy="ma_cross" onclick="changeStrategy('ma_cross')">이동평균 크로스</button>
-          <button class="strategy-pill" data-strategy="bollinger" onclick="changeStrategy('bollinger')">볼린저밴드</button>
-          <button class="strategy-pill" data-strategy="volatility_breakout" onclick="changeStrategy('volatility_breakout')">변동성 돌파</button>
-        </div>
-        <div class="strategy-info" id="strategyInfo">전략을 선택하면 설명이 표시됩니다.</div>
-
-        <div class="config-row">
-          <div class="config-item">
-            <span class="config-label">실행 주기</span>
-            <span class="config-value" id="cfgInterval">—</span>
-          </div>
-          <div class="config-divider"></div>
-          <div class="config-item">
-            <span class="config-label">투자 모드</span>
-            <span class="config-value" id="cfgMode">—</span>
-          </div>
-          <div class="config-divider"></div>
-          <div class="config-item">
-            <span class="config-label">종목 탐색</span>
-            <button class="scan-mode-btn" id="scanModeBtn" onclick="toggleScanMode()">—</button>
-          </div>
-        </div>
-
-        <div class="universe-notice" id="universeNotice" style="display:none">
-          <span class="universe-icon">⬡</span>
-          거래량 상위 종목 전체를 실시간으로 탐색하여 전략 조건에 맞는 종목을 자동 선정합니다.
-        </div>
-      </div>
-    </section>
-
-    <!-- ── SECTION: 실행 로그 ── -->
-    <section class="section section-light section-divider">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">실행 로그</h2>
-          <button class="btn-outline" onclick="clearLogs()">초기화</button>
-        </div>
-        <div class="log-wrap" id="logWrap">
-          <div class="log-empty">아직 로그가 없습니다</div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <footer class="footer">
+  <!-- ── SECTION: 계좌 현황 ── -->
+  <section class="section section-light">
     <div class="container">
-      <span>AutoTrader &mdash; 한국투자증권 KIS API</span>
-      <span class="footer-divider">|</span>
-      <span id="footerTime">—</span>
+      <div class="section-header">
+        <h2 class="section-title">계좌 현황</h2>
+        <button class="btn-icon" id="refreshBtn" onclick="refreshBalance()" title="새로고침">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               class="lucide lucide-refresh-cw-icon lucide-refresh-cw">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+            <path d="M8 16H3v5" />
+          </svg>
+        </button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">현금 잔고 <span class="stat-currency">KRW</span></div>
+          <div class="stat-value" id="cashValue">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">USD 잔고 <span class="stat-currency">USD</span></div>
+          <div class="stat-value" id="usdCashValue">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">주식 평가금액</div>
+          <div class="stat-value" id="stockValue">—</div>
+        </div>
+        <div class="stat-card stat-card--accent">
+          <div class="stat-label">총 자산</div>
+          <div class="stat-value accent" id="totalValue">—</div>
+        </div>
+      </div>
     </div>
-  </footer>
+  </section>
 
-  <script src="/static/script.js"></script>
+  <!-- ── SECTION: 보유종목 ── -->
+  <section class="section section-light section-divider">
+    <div class="container">
+      <h2 class="section-title">
+        보유종목
+        <span class="count-badge" id="holdingsCount">0</span>
+      </h2>
+      <div id="holdingsContainer">
+        <div class="empty-holdings">보유 종목이 없습니다</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: 감시 종목 ── -->
+  <section class="section section-light section-divider">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title no-mb">
+          감시 종목
+          <span class="count-badge" id="watchlistCount">0</span>
+        </h2>
+        <button class="btn-icon" id="watchlistRefreshBtn" onclick="refreshWatchlist()" title="새로고침">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               class="lucide lucide-refresh-cw-icon lucide-refresh-cw">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+            <path d="M8 16H3v5" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 한국 주식 -->
+      <div id="watchlistKrSection">
+        <div class="watchlist-sub-header">
+          <span class="market-badge market-badge--kr">KR</span>
+          <span class="watchlist-sub-title">한국 주식</span>
+          <span class="count-badge" id="watchlistKrCount">0</span>
+        </div>
+        <div id="watchlistKrContainer">
+          <div class="empty-holdings">데이터를 불러오는 중...</div>
+        </div>
+      </div>
+
+      <!-- 미국 주식 -->
+      <div id="watchlistUsSection" class="watchlist-market-section">
+        <div class="watchlist-sub-header">
+          <span class="market-badge market-badge--us">US</span>
+          <span class="watchlist-sub-title">미국 주식</span>
+          <span class="count-badge" id="watchlistUsCount">0</span>
+        </div>
+        <div id="watchlistUsContainer">
+          <div class="empty-holdings">데이터를 불러오는 중...</div>
+        </div>
+      </div>
+
+      <div class="watchlist-updated" id="watchlistUpdated"></div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: 전략 설정 (dark) ── -->
+  <section class="section section-dark">
+    <div class="container">
+      <h2 class="section-title light">전략 설정</h2>
+      <div class="strategy-pills" id="strategyPills">
+        <button class="strategy-pill" data-strategy="rsi" onclick="changeStrategy('rsi')">RSI</button>
+        <button class="strategy-pill" data-strategy="ma_cross" onclick="changeStrategy('ma_cross')">이동평균 크로스</button>
+        <button class="strategy-pill" data-strategy="bollinger" onclick="changeStrategy('bollinger')">볼린저밴드</button>
+        <button class="strategy-pill" data-strategy="volatility_breakout"
+                onclick="changeStrategy('volatility_breakout')">변동성 돌파
+        </button>
+      </div>
+      <div class="strategy-info" id="strategyInfo">전략을 선택하면 설명이 표시됩니다.</div>
+
+      <div class="config-row">
+        <div class="config-item">
+          <span class="config-label">실행 주기</span>
+          <span class="config-value" id="cfgInterval">—</span>
+        </div>
+        <div class="config-divider"></div>
+        <div class="config-item">
+          <span class="config-label">투자 모드</span>
+          <span class="config-value" id="cfgMode">—</span>
+        </div>
+        <div class="config-divider"></div>
+        <div class="config-item">
+          <span class="config-label">종목 탐색</span>
+          <button class="scan-mode-btn" id="scanModeBtn" onclick="toggleScanMode()">—</button>
+        </div>
+      </div>
+
+      <div class="universe-notice" id="universeNotice" style="display:none">
+        <span class="universe-icon">⬡</span>
+        거래량 상위 종목 전체를 실시간으로 탐색하여 전략 조건에 맞는 종목을 자동 선정합니다.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: 실행 로그 ── -->
+  <section class="section section-light section-divider">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">실행 로그</h2>
+        <button class="btn-outline" onclick="clearLogs()">초기화</button>
+      </div>
+      <div class="log-wrap" id="logWrap">
+        <div class="log-empty">아직 로그가 없습니다</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <span>AutoTrader &mdash; 한국투자증권 KIS API</span>
+    <span class="footer-divider">|</span>
+    <span id="footerTime">—</span>
+  </div>
+</footer>
+
+<script src="/static/script.js"></script>
 </body>
 </html>

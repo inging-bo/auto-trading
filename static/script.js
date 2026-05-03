@@ -130,13 +130,15 @@ async function refreshBalance() {
 }
 
 function renderBalance(d) {
-  const cash  = d.balance?.cash         ?? 0;
-  const total = d.balance?.total_assets ?? 0;
-  const stock = total - cash;
+  const cash    = d.balance?.cash         ?? 0;
+  const usdCash = d.balance?.usd_cash     ?? 0;
+  const total   = d.balance?.total_assets ?? 0;
+  const stock   = total - cash;
 
-  document.getElementById('cashValue').textContent  = krw(cash);
-  document.getElementById('stockValue').textContent = krw(stock);
-  document.getElementById('totalValue').textContent = krw(total);
+  document.getElementById('cashValue').textContent    = krw(cash);
+  document.getElementById('usdCashValue').textContent = usd(usdCash);
+  document.getElementById('stockValue').textContent   = krw(stock);
+  document.getElementById('totalValue').textContent   = krw(total);
 
   renderHoldings(d.holdings ?? []);
 }

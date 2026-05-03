@@ -215,7 +215,7 @@ table { border-collapse: collapse; }
 /* ── Stat Cards ─────────────────────────────────────────── */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
@@ -236,6 +236,18 @@ table { border-collapse: collapse; }
   text-transform: uppercase;
   color: var(--text-2);
   margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stat-currency {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--gray-surf);
+  color: var(--text-2);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 
 .stat-value {
@@ -615,9 +627,9 @@ table { border-collapse: collapse; }
 .footer-divider { color: var(--border); }
 
 /* ── Responsive ─────────────────────────────────────────── */
-@media (max-width: 896px) {
+@media (max-width: 1100px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .stat-card--accent { grid-column: 1 / -1; }
+  .stat-card--accent { grid-column: auto; }
 }
 @media (max-width: 768px) {
   .header-center { display: none; }

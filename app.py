@@ -99,7 +99,7 @@ def _fetch_balance_from_api() -> dict:
         return {"balance": balance, "holdings": holdings}
     except Exception as e:
         logger.error(f"잔고 조회 실패: {e}")
-        return {"balance": {"cash": 0, "total_assets": 0}, "holdings": []}
+        return {"balance": {"cash": 0, "usd_cash": 0, "total_assets": 0}, "holdings": []}
 
 
 def get_balance_cached(force: bool = False) -> dict:

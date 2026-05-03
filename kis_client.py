@@ -170,15 +170,18 @@ class KisClient:
         try:
             balance = self._kis.account().balance()
             krw_deposit = balance.deposits.get("KRW")
+            usd_deposit = balance.deposits.get("USD")
             cash = float(krw_deposit.amount) if krw_deposit else 0.0
+            usd_cash = float(usd_deposit.amount) if usd_deposit else 0.0
             stock_value = float(balance.current_amount) if balance.current_amount else 0.0
             return {
                 "cash": cash,
+                "usd_cash": usd_cash,
                 "total_assets": cash + stock_value,
             }
         except Exception as e:
             logger.error(f"잔고 조회 실패: {e}")
-            return {"cash": 0, "total_assets": 0}
+            return {"cash": 0, "usd_cash": 0, "total_assets": 0}
 
     def get_holdings(self) -> list[dict]:
         """보유 종목 목록을 반환합니다."""
