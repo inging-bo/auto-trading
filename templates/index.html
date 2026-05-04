@@ -134,6 +134,49 @@
     </div>
   </section>
 
+  <!-- ── SECTION: 매매 제외 종목 ── -->
+  <section class="section section-light section-divider">
+    <div class="container">
+      <h2 class="section-title">
+        매매 제외 종목
+        <span class="count-badge" id="excludedCount">0</span>
+      </h2>
+      <p class="excluded-desc">추가된 종목은 자동매매 사이클에서 완전히 제외됩니다.</p>
+      <div class="excluded-add-row">
+        <input id="excludedInput" class="excluded-input" type="text"
+               placeholder="종목코드 입력 (예: ORCL, 005930)"
+               onkeydown="if(event.key==='Enter') addExcluded()">
+        <button class="btn-add-excluded" onclick="addExcluded()">추가</button>
+      </div>
+      <div id="excludedChips" class="excluded-chips">
+        <span class="excluded-empty">제외된 종목이 없습니다</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: 매수/매도 내역 ── -->
+  <section class="section section-light section-divider">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">
+          매수/매도 내역
+          <span class="count-badge" id="tradesCount">0</span>
+        </h2>
+        <div class="trades-toolbar">
+          <div class="period-tabs" id="periodTabs">
+            <button class="period-tab active" data-period="today"  onclick="setPeriod('today')">오늘</button>
+            <button class="period-tab"        data-period="week"   onclick="setPeriod('week')">1주일</button>
+            <button class="period-tab"        data-period="month"  onclick="setPeriod('month')">1개월</button>
+            <button class="period-tab"        data-period="all"    onclick="setPeriod('all')">전체</button>
+          </div>
+        </div>
+      </div>
+      <div id="tradesContainer">
+        <div class="empty-holdings">매매 내역이 없습니다</div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── SECTION: 전략 설정 (dark) ── -->
   <section class="section section-dark">
     <div class="container">

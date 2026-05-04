@@ -281,6 +281,115 @@ function renderWatchlist(d) {
   }
 }
 
+// ── Excluded symbols ─────────────────────────────────────
+async function fetchExcluded() {
+  try {
+    const res     = await fetch('/api/excluded');
+    const symbols = await res.json();
+    renderExcluded(symbols);
+  } catch {/* silently retry */ }
+}
+
+function renderExcluded(symbols) {
+  const chips = document.getElementById('excludedChips');
+  const badge = document.getElementById('excludedCount');
+  badge.textContent = symbols.length;
+
+  if (!symbols.length) {
+    chips.innerHTML = `<span class="excluded-empty">제외된 종목이 없습니다</span>`;
+    return;
+  }
+  chips.innerHTML = symbols.map(s => `
+    <span class="excluded-chip">
+      <span class="excluded-chip-label">${esc(s)}</span>
+      <button class="excluded-chip-remove" onclick="removeExcluded('${esc(s)}')" title="제외 해제">×</button>
+    </span>`).join('');
+}
+
+async function addExcluded() {
+  const input  = document.getElementById('excludedInput');
+  const symbol = input.value.trim().toUpperCase();
+  if (!symbol) return;
+  try {
+    const res = await fetch('/api/excluded', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ symbol }),
+    });
+    const d = await res.json();
+    if (d.error) { alert(d.error); return; }
+    input.value = '';
+    renderExcluded(d.symbols);
+  } catch (e) { console.error(e); }
+}
+
+async function removeExcluded(symbol) {
+  try {
+    const res = await fetch(`/api/excluded/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+    const d   = await res.json();
+    renderExcluded(d.symbols);
+  } catch (e) { console.error(e); }
+}
+
+// ── Trades ───────────────────────────────────────────────
+let _localTrades = [];
+let _tradePeriod = 'today';
+
+async function fetchTrades() {
+  try {
+    const res    = await fetch(`/api/trades?period=${_tradePeriod}`);
+    const trades = await res.json();
+    _localTrades = trades;
+    renderTrades(trades);
+  } catch {/* silently retry */ }
+}
+
+function setPeriod(period) {
+  _tradePeriod = period;
+  document.querySelectorAll('.period-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === period);
+  });
+  fetchTrades();
+}
+
+function renderTrades(trades) {
+  const container = document.getElementById('tradesContainer');
+  const badge     = document.getElementById('tradesCount');
+  badge.textContent = trades.length;
+
+  if (!trades.length) {
+    container.innerHTML = `<div class="empty-holdings">해당 기간에 매매 내역이 없습니다</div>`;
+    return;
+  }
+
+  const rows = trades.map(t => {
+    const isBuy     = t.action === 'BUY';
+    const badgeCls  = isBuy ? 'trade-badge--buy' : 'trade-badge--sell';
+    const reasonCls = t.reason === '손절' ? 'profit-neg'
+                    : t.reason === '익절' ? 'profit-pos'
+                    : '';
+    const dateStr   = t.dt ? t.dt.replace('T', ' ').slice(0, 16) : t.time;
+    return `
+      <tr>
+        <td><span class="trade-dt">${esc(dateStr)}</span></td>
+        <td><span class="cell-symbol">${esc(t.symbol)}</span></td>
+        <td><span class="trade-badge ${badgeCls}">${isBuy ? '매수' : '매도'}</span></td>
+        <td class="${reasonCls}">${esc(t.reason)}</td>
+        <td>${esc(t.detail)}</td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table class="data-table trades-table">
+        <thead>
+          <tr><th>일시</th><th>종목</th><th>구분</th><th>사유</th><th>상세</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 // ── Logs ─────────────────────────────────────────────────
 async function fetchLogs() {
   try {
@@ -380,11 +489,14 @@ function updateClock() {
 fetchStatus();
 fetchBalance();
 fetchWatchlist();
+fetchExcluded();
+fetchTrades();
 fetchLogs();
 updateClock();
 
-setInterval(fetchStatus,   3_000);
-setInterval(fetchLogs,     5_000);
+setInterval(fetchStatus,    3_000);
+setInterval(fetchLogs,      5_000);
+setInterval(fetchTrades,   10_000);
 setInterval(fetchBalance,  60_000);
 setInterval(fetchWatchlist, 60_000);
-setInterval(updateClock,   1_000);
+setInterval(updateClock,    1_000);

@@ -1,7 +1,20 @@
+import json
 import logging
+import os
+
 from kis_client import KisClient, parse_us_ticker
 
 logger = logging.getLogger(__name__)
+
+EXCLUDED_FILE = "excluded.json"
+
+
+def load_excluded() -> set[str]:
+    try:
+        with open(EXCLUDED_FILE, encoding="utf-8") as f:
+            return {s.upper() for s in json.load(f)}
+    except Exception:
+        return set()
 
 
 class Screener:
@@ -52,8 +65,12 @@ class Screener:
         else:
             candidates = self._get_kr_watchlist_candidates(cfg)
 
+        excluded = load_excluded()
         passed: list[dict] = []
         for c in candidates:
+            if c["symbol"].upper() in excluded:
+                logger.info(f"[{c['symbol']}] KR 제외 종목 - 스킵")
+                continue
             if c["volume"] < min_volume:
                 logger.debug(f"[{c['symbol']}] KR 제외 - 거래량 부족 ({c['volume']:,})")
                 continue
@@ -103,11 +120,15 @@ class Screener:
             return []
 
         logger.info(f"US 감시 목록 검사 중 ({len(watchlist)}개)...")
+        excluded = load_excluded()
         passed: list[dict] = []
 
         for item in watchlist:
             symbol, exchange = parse_us_ticker(str(item))
             if not symbol:
+                continue
+            if symbol.upper() in excluded:
+                logger.info(f"[{symbol}] US 제외 종목 - 스킵")
                 continue
 
             quote = self.client.get_quote(symbol, market=exchange)

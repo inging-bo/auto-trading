@@ -9,6 +9,7 @@ from datetime import datetime
 from flask import Flask, jsonify, render_template, request
 
 from kis_client import KisClient, parse_us_ticker
+from screener import load_excluded, EXCLUDED_FILE
 from strategies import STRATEGY_MAP
 
 STOCK_NAMES: dict[str, str] = {
@@ -49,22 +50,89 @@ STOCK_NAMES: dict[str, str] = {
 app = Flask(__name__)
 
 # ── 로그 캡처 ─────────────────────────────────────────────
+import json
+import os
+
+TRADES_FILE = "trades.json"
+
 log_entries: deque[dict] = deque(maxlen=200)
+trade_entries: deque[dict] = deque(maxlen=2000)
+
+_BUY_RE  = re.compile(r"\[(.+?)\] 매수 실행 - (\d+)주 @ (.+)")
+_SELL_RE = re.compile(r"\[(.+?)\] 매도 실행 @ (.+)")
+_SL_RE   = re.compile(r"\[(.+?)\] 손절 실행 \((.+?)\)")
+_TP_RE   = re.compile(r"\[(.+?)\] 익절 실행 \((.+?)\)")
+
+
+def _load_trades():
+    if not os.path.exists(TRADES_FILE):
+        return
+    try:
+        with open(TRADES_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    trade_entries.append(json.loads(line))
+        # 최신순 정렬 유지 (파일은 오래된 것부터, deque는 최신부터)
+        tmp = list(trade_entries)
+        trade_entries.clear()
+        for t in reversed(tmp):
+            trade_entries.appendleft(t)
+    except Exception:
+        pass
+
+
+def _save_trade(entry: dict):
+    try:
+        with open(TRADES_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 class UILogHandler(logging.Handler):
     def emit(self, record):
-        log_entries.appendleft({
-            "time": datetime.fromtimestamp(record.created).strftime("%H:%M:%S"),
-            "level": record.levelname,
-            "message": self.format(record),
-        })
+        msg = self.format(record)
+        now = datetime.fromtimestamp(record.created)
+        ts  = now.strftime("%H:%M:%S")
+        dt  = now.strftime("%Y-%m-%dT%H:%M:%S")
+        log_entries.appendleft({"time": ts, "level": record.levelname, "message": msg})
+
+        entry = None
+        m = _BUY_RE.search(msg)
+        if m:
+            entry = {"dt": dt, "time": ts, "symbol": m.group(1),
+                     "action": "BUY", "reason": "매수",
+                     "detail": f"{m.group(2)}주 @ {m.group(3)}"}
+        if not entry:
+            m = _SELL_RE.search(msg)
+            if m:
+                entry = {"dt": dt, "time": ts, "symbol": m.group(1),
+                         "action": "SELL", "reason": "매도",
+                         "detail": f"@ {m.group(2)}"}
+        if not entry:
+            m = _SL_RE.search(msg)
+            if m:
+                entry = {"dt": dt, "time": ts, "symbol": m.group(1),
+                         "action": "SELL", "reason": "손절",
+                         "detail": m.group(2)}
+        if not entry:
+            m = _TP_RE.search(msg)
+            if m:
+                entry = {"dt": dt, "time": ts, "symbol": m.group(1),
+                         "action": "SELL", "reason": "익절",
+                         "detail": m.group(2)}
+        if entry:
+            trade_entries.appendleft(entry)
+            _save_trade(entry)
 
 
 _ui_handler = UILogHandler()
 _ui_handler.setFormatter(logging.Formatter("%(message)s"))
 logging.getLogger().addHandler(_ui_handler)
 logging.getLogger().setLevel(logging.INFO)
+
+_load_trades()
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +392,21 @@ def api_watchlist_refresh():
     return jsonify(get_watchlist_cached(force=True))
 
 
+@app.route("/api/trades")
+def api_trades():
+    from datetime import timedelta
+    period = request.args.get("period", "all")
+    trades = list(trade_entries)
+    if period != "all":
+        days = {"today": 0, "week": 7, "month": 30}.get(period)
+        if days is not None:
+            cutoff = (datetime.now() - timedelta(days=days)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) if days == 0 else datetime.now() - timedelta(days=days)
+            trades = [t for t in trades if t.get("dt", "") >= cutoff.strftime("%Y-%m-%dT%H:%M:%S")]
+    return jsonify(trades)
+
+
 @app.route("/api/strategy", methods=["POST"])
 def api_strategy():
     data = request.get_json() or {}
@@ -333,6 +416,40 @@ def api_strategy():
     _save_strategy(strategy)
     logger.info(f"전략 변경: {strategy}")
     return jsonify({"status": "ok", "strategy": strategy})
+
+
+@app.route("/api/excluded", methods=["GET"])
+def api_excluded_get():
+    return jsonify(sorted(load_excluded()))
+
+
+@app.route("/api/excluded", methods=["POST"])
+def api_excluded_add():
+    symbol = (request.get_json() or {}).get("symbol", "").strip().upper()
+    if not symbol:
+        return jsonify({"error": "종목코드를 입력하세요."}), 400
+    symbols = load_excluded()
+    symbols.add(symbol)
+    _save_excluded(symbols)
+    logger.info(f"제외 종목 추가: {symbol}")
+    return jsonify({"status": "ok", "symbols": sorted(symbols)})
+
+
+@app.route("/api/excluded/<symbol>", methods=["DELETE"])
+def api_excluded_delete(symbol):
+    symbol = symbol.upper()
+    symbols = load_excluded()
+    symbols.discard(symbol)
+    _save_excluded(symbols)
+    logger.info(f"제외 종목 삭제: {symbol}")
+    return jsonify({"status": "ok", "symbols": sorted(symbols)})
+
+
+def _save_excluded(symbols: set[str]):
+    with open(EXCLUDED_FILE, "w", encoding="utf-8") as f:
+        import json as _json
+        _json.dump(sorted(symbols), f, ensure_ascii=False)
+        f.write("\n")
 
 
 @app.route("/api/scan-mode", methods=["POST"])

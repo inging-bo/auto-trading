@@ -547,6 +547,158 @@ table { border-collapse: collapse; }
   color: var(--blue);
 }
 
+/* ── Excluded symbols ───────────────────────────────────── */
+.excluded-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 20px;
+  margin-top: -16px;
+}
+
+.excluded-add-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.excluded-input {
+  flex: 1;
+  max-width: 320px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0 14px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.excluded-input:focus { border-color: var(--blue); }
+.excluded-input::placeholder { color: var(--text-2); }
+
+.btn-add-excluded {
+  height: 40px;
+  padding: 0 20px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-add-excluded:hover { background: var(--blue-hover); }
+
+.excluded-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.excluded-empty {
+  font-size: 13px;
+  color: var(--text-2);
+  padding: 6px 0;
+}
+
+.excluded-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 59, 48, 0.07);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  border-radius: var(--r-pill);
+  padding: 5px 6px 5px 14px;
+}
+
+.excluded-chip-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--red);
+  letter-spacing: 0.01em;
+}
+
+.excluded-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 59, 48, 0.12);
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--red);
+  cursor: pointer;
+  transition: background 0.15s;
+  padding: 0;
+  font-family: var(--font);
+}
+.excluded-chip-remove:hover { background: rgba(255, 59, 48, 0.25); }
+
+/* ── Trades ─────────────────────────────────────────────── */
+.trades-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.period-tabs {
+  display: flex;
+  background: var(--gray-surf);
+  border-radius: var(--r-pill);
+  padding: 4px;
+  gap: 2px;
+}
+
+.period-tab {
+  background: transparent;
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.period-tab:hover { color: var(--text); }
+.period-tab.active {
+  background: var(--white);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+}
+
+.trades-table thead th:nth-child(n+2) { text-align: left; }
+.trades-table tbody td:nth-child(n+2) { text-align: left; }
+
+.trade-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 5px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.trade-badge--buy  { background: rgba(0, 192, 135, 0.1); color: var(--green); }
+.trade-badge--sell { background: rgba(255, 59, 48, 0.1);  color: var(--red); }
+
+.trade-dt {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
 /* ── Log ────────────────────────────────────────────────── */
 .log-wrap {
   border: 1px solid var(--border);
