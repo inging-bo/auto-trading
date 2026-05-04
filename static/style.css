@@ -777,6 +777,109 @@ table { border-collapse: collapse; }
   word-break: break-word;
 }
 
+/* ── Backtest ───────────────────────────────────────────── */
+.bt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.bt-input {
+  width: 160px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0 14px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.bt-input:focus { border-color: var(--blue); }
+.bt-input::placeholder { color: var(--text-2); }
+
+.bt-select {
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0 12px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.bt-select:focus { border-color: var(--blue); }
+
+.btn-run-bt {
+  height: 40px;
+  padding: 0 28px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-run-bt:hover    { background: var(--blue-hover); }
+.btn-run-bt:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.bt-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.bt-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.bt-meta {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 16px;
+}
+
+.bt-table thead th:nth-child(n+2) { text-align: right; }
+.bt-table tbody td:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; }
+.bt-table tbody td:first-child     { text-align: left; }
+
+.bt-best-row { background: rgba(0, 82, 255, 0.03); }
+.bt-best-row:hover { background: rgba(0, 82, 255, 0.06) !important; }
+
+.bt-best-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--blue-light);
+  color: var(--blue);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 /* ── Footer ─────────────────────────────────────────────── */
 .footer {
   background: var(--gray-surf);

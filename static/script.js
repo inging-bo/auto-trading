@@ -481,6 +481,90 @@ async function changeStrategy(strategy) {
   }
 }
 
+// ── Backtest ──────────────────────────────────────────────
+async function runBacktest() {
+  const symbol = document.getElementById('btSymbol').value.trim().toUpperCase();
+  const market = document.getElementById('btMarket').value;
+  const period = document.getElementById('btPeriod').value;
+
+  if (!symbol) { alert('종목코드를 입력하세요.'); return; }
+
+  const btn = document.getElementById('btRunBtn');
+  btn.disabled    = true;
+  btn.textContent = '조회 중...';
+  document.getElementById('btResult').innerHTML =
+    `<div class="bt-loading"><span class="bt-spinner"></span> 데이터 조회 및 백테스트 실행 중...</div>`;
+
+  try {
+    const res = await fetch('/api/backtest', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ symbol, market, period }),
+    });
+    const d = await res.json();
+    if (d.error) {
+      document.getElementById('btResult').innerHTML =
+        `<div class="empty-holdings">${esc(d.error)}</div>`;
+    } else {
+      renderBacktest(d);
+    }
+  } catch (e) {
+    document.getElementById('btResult').innerHTML =
+      `<div class="empty-holdings">백테스트 요청 실패</div>`;
+    console.error(e);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '실행';
+  }
+}
+
+function renderBacktest(d) {
+  const PERIOD_LABEL = { '90d': '3개월', '180d': '6개월', '365d': '1년' };
+  const sign = v => v > 0 ? '+' : '';
+  const cls  = v => v > 0 ? 'profit-pos' : v < 0 ? 'profit-neg' : 'profit-nil';
+
+  const bhCls  = cls(d.buy_hold);
+  const meta   = `${esc(d.symbol)} &nbsp;·&nbsp; ${esc(d.market)} &nbsp;·&nbsp; `
+               + `${PERIOD_LABEL[d.period] || d.period} (${d.start_date} ~ ${d.end_date}, ${d.rows}거래일)`
+               + `&nbsp;&nbsp; 매수보유: <span class="${bhCls}">${sign(d.buy_hold)}${d.buy_hold}%</span>`;
+
+  const rows = d.results.map(r => {
+    const best = d.results.reduce((a, b) =>
+      b.total_return > a.total_return ? b : a);
+    const isBest = r.strategy === best.strategy && r.num_trades > 0;
+    return `
+      <tr${isBest ? ' class="bt-best-row"' : ''}>
+        <td>
+          <span class="cell-symbol">${esc(r.label)}</span>
+          ${isBest ? '<span class="bt-best-badge">최고</span>' : ''}
+        </td>
+        <td class="${cls(r.total_return)}">${sign(r.total_return)}${r.total_return}%</td>
+        <td>${r.num_trades}회</td>
+        <td class="${r.win_rate >= 50 ? 'profit-pos' : r.win_rate > 0 ? 'profit-neg' : 'profit-nil'}">${r.win_rate}%</td>
+        <td class="${cls(r.avg_profit)}">${sign(r.avg_profit)}${r.avg_profit}%</td>
+        <td class="profit-neg">${r.max_drawdown}%</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('btResult').innerHTML = `
+    <div class="bt-meta">${meta}</div>
+    <div class="table-wrap">
+      <table class="data-table bt-table">
+        <thead>
+          <tr>
+            <th>전략</th>
+            <th>총 수익률</th>
+            <th>거래수</th>
+            <th>승률</th>
+            <th>평균 수익</th>
+            <th>최대 낙폭</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 // ── Footer clock ─────────────────────────────────────────
 function updateClock() {
   const now = new Date();

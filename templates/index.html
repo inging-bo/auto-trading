@@ -226,6 +226,31 @@
     </div>
   </section>
 
+  <!-- ── SECTION: 백테스트 ── -->
+  <section class="section section-light section-divider">
+    <div class="container">
+      <h2 class="section-title">백테스트</h2>
+      <div class="bt-controls">
+        <input id="btSymbol" class="bt-input" type="text" value="005930"
+               placeholder="종목코드" onkeydown="if(event.key==='Enter') runBacktest()">
+        <select id="btMarket" class="bt-select">
+          <option value="KRX">KR (한국)</option>
+          <option value="NASDAQ">US NASDAQ</option>
+          <option value="NYSE">US NYSE</option>
+        </select>
+        <select id="btPeriod" class="bt-select">
+          <option value="90d">3개월</option>
+          <option value="180d" selected>6개월</option>
+          <option value="365d">1년</option>
+        </select>
+        <button class="btn-run-bt" id="btRunBtn" onclick="runBacktest()">실행</button>
+      </div>
+      <div id="btResult">
+        <div class="empty-holdings">종목코드를 입력하고 실행하세요</div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── SECTION: 실행 로그 ── -->
   <section class="section section-light section-divider">
     <div class="container">

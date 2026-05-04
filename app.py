@@ -11,6 +11,7 @@ from flask import Flask, jsonify, render_template, request
 from kis_client import KisClient, parse_us_ticker
 from screener import load_excluded, EXCLUDED_FILE
 from strategies import STRATEGY_MAP
+from backtest import run_all_backtests
 
 STOCK_NAMES: dict[str, str] = {
     # 한국
@@ -467,6 +468,47 @@ def api_scan_mode():
     label = "전체 시장 자동 탐색" if enabled else "감시 목록"
     logger.info(f"탐색 모드 변경 ({market.upper()}): {label}")
     return jsonify({"status": "ok", "market": market, "dynamic": enabled})
+
+
+@app.route("/api/backtest", methods=["POST"])
+def api_backtest():
+    data   = request.get_json() or {}
+    symbol = data.get("symbol", "005930").strip().upper()
+    market = data.get("market", "KRX")
+    period = data.get("period", "180d")
+
+    if period not in {"90d", "180d", "365d"}:
+        period = "180d"
+
+    config = _load_config()
+    try:
+        client = KisClient(virtual=config.get("virtual", False))
+        client.connect()
+        df = client.get_chart(symbol, market=market, days=period, interval="day")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    if df.empty or len(df) < 25:
+        return jsonify({"error": f"[{symbol}] 데이터가 부족합니다 ({len(df)}봉)."}), 404
+
+    first     = float(df["close"].iloc[0])
+    last      = float(df["close"].iloc[-1])
+    buy_hold  = round((last - first) / first * 100, 2)
+    start_date = str(df.index[0])[:10]
+    end_date   = str(df.index[-1])[:10]
+
+    results = run_all_backtests(df, config, symbol)
+
+    return jsonify({
+        "symbol":     symbol,
+        "market":     market,
+        "period":     period,
+        "rows":       len(df),
+        "start_date": start_date,
+        "end_date":   end_date,
+        "buy_hold":   buy_hold,
+        "results":    results,
+    })
 
 
 if __name__ == "__main__":
