@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 import yaml
 import schedule
@@ -94,8 +95,9 @@ class Trader:
             max_amount = risk.get("max_buy_amount", 500000)
         else:
             max_amount = risk.get("us_max_buy_amount_usd", 300)
-        qty = math.floor(max_amount / price)
-        return max(qty, 1)
+        if price <= 0:
+            return 0
+        return math.floor(max_amount / price)
 
     def _process_target(self, target: dict):
         symbol = target["symbol"]
@@ -135,10 +137,15 @@ class Trader:
 
         if action == "매수":
             qty = self._calc_qty(price, market)
-            logger.info(f"[{symbol}] 매수 실행 - {qty}주 @ {price_str}")
-            order = self.client.buy(symbol, qty, market=market)
-            if order:
-                self.holdings.add(symbol)
+            if qty <= 0:
+                logger.info(
+                    f"[{symbol}] 매수 스킵 - 1회 매수 한도로는 1주 미만 ({price_str})"
+                )
+            else:
+                logger.info(f"[{symbol}] 매수 실행 - {qty}주 @ {price_str}")
+                order = self.client.buy(symbol, qty, market=market)
+                if order:
+                    self.holdings.add(symbol)
         elif action == "매도":
             logger.info(f"[{symbol}] 매도 실행 @ {price_str}")
             self.client.sell(symbol, market=market)

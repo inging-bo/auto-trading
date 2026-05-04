@@ -76,7 +76,7 @@ us_screener:
 # ────────────────────────────────────────────
 risk:
   max_buy_amount: 500000       # KR 1회 최대 매수금액 (원)
-  us_max_buy_amount_usd: 50   # US 1회 최대 매수금액 (USD)
+  us_max_buy_amount_usd: 60   # US 1회 최대 매수금액 (USD)
   stop_loss_pct: -5.0          # 손절 기준 (%)
   take_profit_pct: 10.0        # 익절 기준 (%)
 
