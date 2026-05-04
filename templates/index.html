@@ -202,15 +202,26 @@
           <span class="config-value" id="cfgMode">—</span>
         </div>
         <div class="config-divider"></div>
-        <div class="config-item">
+        <div class="config-item scan-mode-item">
           <span class="config-label">종목 탐색</span>
-          <button class="scan-mode-btn" id="scanModeBtn" onclick="toggleScanMode()">—</button>
+          <div class="scan-mode-pair">
+            <span class="scan-market-label">KR</span>
+            <button class="scan-mode-btn" id="scanModeBtnKr" onclick="toggleScanMode('kr')">—</button>
+          </div>
+          <div class="scan-mode-pair">
+            <span class="scan-market-label">US</span>
+            <button class="scan-mode-btn" id="scanModeBtnUs" onclick="toggleScanMode('us')">—</button>
+          </div>
         </div>
       </div>
 
-      <div class="universe-notice" id="universeNotice" style="display:none">
+      <div class="universe-notice" id="universeNoticeKr" style="display:none">
         <span class="universe-icon">⬡</span>
-        거래량 상위 종목 전체를 실시간으로 탐색하여 전략 조건에 맞는 종목을 자동 선정합니다.
+        <span><strong>KR</strong> &mdash; 거래량 상위 종목 전체를 실시간으로 탐색하여 전략 조건에 맞는 종목을 자동 선정합니다.</span>
+      </div>
+      <div class="universe-notice" id="universeNoticeUs" style="display:none">
+        <span class="universe-icon">⬡</span>
+        <span><strong>US</strong> &mdash; NASDAQ·NYSE 주요 종목 전체를 탐색하여 전략 조건에 맞는 종목을 자동 선정합니다.</span>
       </div>
     </div>
   </section>

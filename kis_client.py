@@ -101,6 +101,107 @@ class KisClient:
             logger.warning(f"[{symbol}] 시세 조회 실패: {e}")
             return {}
 
+    # ── 미국 주식 폴백 유니버스 (KIS API 실패 시 사용) ───────────
+    _US_FALLBACK: list[tuple[str, str]] = [
+        # (symbol, exchange)
+        ("AAPL","NASDAQ"), ("MSFT","NASDAQ"), ("NVDA","NASDAQ"), ("GOOGL","NASDAQ"),
+        ("META","NASDAQ"), ("AMZN","NASDAQ"), ("TSLA","NASDAQ"), ("AVGO","NASDAQ"),
+        ("COST","NASDAQ"), ("NFLX","NASDAQ"), ("AMD","NASDAQ"),  ("ADBE","NASDAQ"),
+        ("CSCO","NASDAQ"), ("QCOM","NASDAQ"), ("INTU","NASDAQ"), ("TXN","NASDAQ"),
+        ("AMGN","NASDAQ"), ("SBUX","NASDAQ"), ("INTC","NASDAQ"), ("MU","NASDAQ"),
+        ("PANW","NASDAQ"), ("KLAC","NASDAQ"), ("LRCX","NASDAQ"), ("MRVL","NASDAQ"),
+        ("SNPS","NASDAQ"), ("CDNS","NASDAQ"), ("ADI","NASDAQ"),  ("REGN","NASDAQ"),
+        ("GILD","NASDAQ"), ("VRTX","NASDAQ"),
+        ("JPM","NYSE"),   ("V","NYSE"),     ("WMT","NYSE"),   ("MA","NYSE"),
+        ("PG","NYSE"),    ("HD","NYSE"),    ("XOM","NYSE"),   ("JNJ","NYSE"),
+        ("UNH","NYSE"),   ("CVX","NYSE"),   ("MRK","NYSE"),   ("LLY","NYSE"),
+        ("ABBV","NYSE"),  ("KO","NYSE"),    ("PEP","NYSE"),   ("TMO","NYSE"),
+        ("ACN","NYSE"),   ("MCD","NYSE"),   ("NKE","NYSE"),   ("WFC","NYSE"),
+        ("GS","NYSE"),    ("MS","NYSE"),    ("BLK","NYSE"),   ("IBM","NYSE"),
+        ("BA","NYSE"),    ("CAT","NYSE"),   ("UNP","NYSE"),   ("NEE","NYSE"),
+    ]
+
+    def get_us_universe(self, exchanges: list[str] | None = None,
+                        min_vol: int = 1_000_000) -> list[dict]:
+        """해외주식 거래량 상위 유니버스를 반환합니다.
+        KIS 조건검색 API 호출 후 실패 시 내장 폴백 목록으로 시세를 조회합니다.
+        """
+        self._check_connected()
+        exchanges = exchanges or ["NASDAQ", "NYSE"]
+        candidates: list[dict] = []
+
+        # KIS 해외주식 조건검색 API 시도
+        excd_map = {"NASDAQ": "NAS", "NYSE": "NYS", "AMEX": "AMS"}
+        for exchange in exchanges:
+            excd = excd_map.get(exchange, "NAS")
+            try:
+                result = self._kis.fetch(
+                    "/uapi/overseas-price/v1/quotations/inquire-search",
+                    api="HHDFS76200200",
+                    params={
+                        "AUTH": "",
+                        "EXCD": excd,
+                        "CO_YN_PRICECUR": "",
+                        "CO_ST_PRICECUR": "",
+                        "CO_EN_PRICECUR": "",
+                        "CO_YN_RATE": "",
+                        "CO_ST_RATE": "",
+                        "CO_EN_RATE": "",
+                        "CO_YN_VALX": "",
+                        "CO_ST_VALX": "",
+                        "CO_EN_VALX": "",
+                        "CO_YN_SHAR": "",
+                        "CO_ST_SHAR": "",
+                        "CO_EN_SHAR": "",
+                        "CO_YN_VOLUME": "1",
+                        "CO_ST_VOLUME": str(min_vol),
+                        "CO_EN_VOLUME": "",
+                        "CO_YN_AMT": "",
+                        "CO_ST_AMT": "",
+                        "CO_EN_AMT": "",
+                        "CO_YN_EPS": "",
+                        "CO_ST_EPS": "",
+                        "CO_EN_EPS": "",
+                        "CO_YN_PER": "",
+                        "CO_ST_PER": "",
+                        "CO_EN_PER": "",
+                        "KEYB": "",
+                    },
+                )
+                rows = result.get("output2") or []
+                for row in rows:
+                    sym = str(row.get("symb", "")).strip()
+                    if not sym:
+                        continue
+                    candidates.append({
+                        "symbol": sym,
+                        "exchange": exchange,
+                        "price": float(row.get("last", 0) or 0),
+                        "volume": int(row.get("tvol", 0) or 0),
+                    })
+                logger.info(f"US 유니버스 조회 완료 ({exchange}): {len(rows)}개")
+            except Exception as e:
+                logger.warning(f"US 유니버스 API 실패 ({exchange}): {e}")
+
+        if candidates:
+            return candidates
+
+        # 폴백: 내장 목록에서 시세 조회
+        logger.info("US 유니버스 폴백 목록으로 시세 조회 중...")
+        filtered_fallback = [
+            (sym, ex) for sym, ex in self._US_FALLBACK if ex in exchanges
+        ]
+        for sym, exchange in filtered_fallback:
+            quote = self.get_quote(sym, market=exchange)
+            if quote:
+                candidates.append({
+                    "symbol": sym,
+                    "exchange": exchange,
+                    "price": quote["price"],
+                    "volume": quote["volume"],
+                })
+        return candidates
+
     def get_universe(self, min_vol: int = 100000) -> list[dict]:
         """거래량 상위 종목 유니버스를 반환합니다."""
         self._check_connected()

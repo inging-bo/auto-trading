@@ -86,13 +86,17 @@ async function fetchStatus() {
     document.getElementById('cfgInterval').textContent = `${d.interval}분마다`;
     document.getElementById('cfgMode').textContent     = d.virtual ? '모의투자' : '실전투자';
 
-    // Scan mode button
-    const scanBtn    = document.getElementById('scanModeBtn');
-    const notice     = document.getElementById('universeNotice');
-    const isDynamic  = !!d.dynamic_universe;
-    scanBtn.textContent = isDynamic ? '전체 시장' : '감시 목록';
-    scanBtn.classList.toggle('scan-mode-btn--active', isDynamic);
-    notice.style.display = isDynamic ? 'flex' : 'none';
+    // Scan mode buttons (KR / US)
+    const isDynKr = !!d.dynamic_universe;
+    const isDynUs = !!d.dynamic_universe_us;
+    const btnKr   = document.getElementById('scanModeBtnKr');
+    const btnUs   = document.getElementById('scanModeBtnUs');
+    btnKr.textContent = isDynKr ? '전체 시장' : '감시 목록';
+    btnUs.textContent = isDynUs ? '전체 시장' : '감시 목록';
+    btnKr.classList.toggle('scan-mode-btn--active', isDynKr);
+    btnUs.classList.toggle('scan-mode-btn--active', isDynUs);
+    document.getElementById('universeNoticeKr').style.display = isDynKr ? 'flex' : 'none';
+    document.getElementById('universeNoticeUs').style.display = isDynUs ? 'flex' : 'none';
 
     // Strategy pills
     document.querySelectorAll('.strategy-pill').forEach(pill => {
@@ -436,19 +440,18 @@ async function toggleBot() {
 }
 
 // ── Scan mode ────────────────────────────────────────────
-async function toggleScanMode() {
+async function toggleScanMode(market) {
   if (isRunning) {
     alert('봇이 실행 중에는 탐색 모드를 변경할 수 없습니다.\n먼저 봇을 중지하세요.');
     return;
   }
-  const btn = document.getElementById('scanModeBtn');
+  const btn       = document.getElementById(market === 'kr' ? 'scanModeBtnKr' : 'scanModeBtnUs');
   const isDynamic = btn.classList.contains('scan-mode-btn--active');
-  const next = !isDynamic;
   try {
     const res = await fetch('/api/scan-mode', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dynamic: next }),
+      body:    JSON.stringify({ dynamic: !isDynamic, market }),
     });
     const d = await res.json();
     if (d.status === 'ok') await fetchStatus();

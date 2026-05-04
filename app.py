@@ -287,12 +287,13 @@ def _save_strategy(strategy: str):
         f.write(content)
 
 
-def _save_dynamic_universe(enabled: bool):
-    """config.yaml의 use_dynamic_universe 값만 교체합니다 (주석 보존)."""
+def _save_dynamic_universe(enabled: bool, market: str = "kr"):
+    """config.yaml의 use_dynamic_universe(_us) 값만 교체합니다 (주석 보존)."""
+    key = "use_dynamic_universe_us" if market == "us" else "use_dynamic_universe"
     with open("config.yaml", encoding="utf-8") as f:
         content = f.read()
     content = re.sub(
-        r"^(use_dynamic_universe:\s*).*$",
+        rf"^({re.escape(key)}:\s*).*$",
         f"\\g<1>{'true' if enabled else 'false'}",
         content,
         flags=re.MULTILINE,
@@ -342,7 +343,8 @@ def api_status():
         "strategy": config.get("strategy", "rsi"),
         "virtual": config.get("virtual", False),
         "interval": config.get("interval_minutes", 5),
-        "dynamic_universe": config.get("use_dynamic_universe", False),
+        "dynamic_universe":    config.get("use_dynamic_universe",    False),
+        "dynamic_universe_us": config.get("use_dynamic_universe_us", False),
         "market": config.get("market", "KR"),
     })
 
@@ -456,12 +458,15 @@ def _save_excluded(symbols: set[str]):
 def api_scan_mode():
     if bot.running:
         return jsonify({"error": "봇이 실행 중에는 탐색 모드를 변경할 수 없습니다."}), 400
-    data = request.get_json() or {}
+    data    = request.get_json() or {}
     enabled = bool(data.get("dynamic", False))
-    _save_dynamic_universe(enabled)
-    mode = "전체 시장 자동 탐색" if enabled else "감시 목록"
-    logger.info(f"탐색 모드 변경: {mode}")
-    return jsonify({"status": "ok", "dynamic": enabled})
+    market  = data.get("market", "kr").lower()
+    if market not in ("kr", "us"):
+        return jsonify({"error": "market은 'kr' 또는 'us'여야 합니다."}), 400
+    _save_dynamic_universe(enabled, market)
+    label = "전체 시장 자동 탐색" if enabled else "감시 목록"
+    logger.info(f"탐색 모드 변경 ({market.upper()}): {label}")
+    return jsonify({"status": "ok", "market": market, "dynamic": enabled})
 
 
 if __name__ == "__main__":

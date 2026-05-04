@@ -424,6 +424,21 @@ table { border-collapse: collapse; }
   background: var(--dark-border);
 }
 
+.scan-mode-item { gap: 12px; flex-wrap: wrap; }
+
+.scan-mode-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scan-market-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.35);
+}
+
 .scan-mode-btn {
   font-family: var(--font);
   font-size: 13px;

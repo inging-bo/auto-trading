@@ -111,41 +111,61 @@ class Screener:
 
     # ── 미국 주식 ────────────────────────────────────────────
     def _run_us(self) -> list[dict]:
-        us_cfg = self.config.get("us_screener", {})
-        watchlist: list = us_cfg.get("watchlist", [])
-        min_volume: int = us_cfg.get("min_volume", 1000000)
-        max_stocks: int = us_cfg.get("max_stocks", 3)
+        us_cfg      = self.config.get("us_screener", {})
+        min_volume  = us_cfg.get("min_volume", 1_000_000)
+        max_stocks  = us_cfg.get("max_stocks", 3)
+        use_dynamic = self.config.get("use_dynamic_universe_us", False)
 
-        if not watchlist:
+        excluded = load_excluded()
+
+        if use_dynamic:
+            candidates = self._get_us_dynamic_candidates(us_cfg)
+        else:
+            candidates = self._get_us_watchlist_candidates(us_cfg)
+
+        if not candidates:
             return []
 
-        logger.info(f"US 감시 목록 검사 중 ({len(watchlist)}개)...")
-        excluded = load_excluded()
         passed: list[dict] = []
-
-        for item in watchlist:
-            symbol, exchange = parse_us_ticker(str(item))
-            if not symbol:
+        for c in candidates:
+            sym      = c["symbol"].upper()
+            exchange = c.get("exchange", c.get("market", "NASDAQ"))
+            if sym in excluded:
+                logger.info(f"[{sym}] US 제외 종목 - 스킵")
                 continue
-            if symbol.upper() in excluded:
-                logger.info(f"[{symbol}] US 제외 종목 - 스킵")
+            if c.get("volume", 0) < min_volume:
+                logger.debug(f"[{sym}] US 제외 - 거래량 부족 ({c.get('volume', 0):,})")
                 continue
-
-            quote = self.client.get_quote(symbol, market=exchange)
-            if not quote:
-                continue
-
-            volume = quote.get("volume", 0)
-            price = quote.get("price", 0)
-
-            if volume < min_volume:
-                logger.debug(f"[{symbol}] US 제외 - 거래량 부족 ({volume:,})")
-                continue
-
-            logger.info(f"[{symbol}] US 통과 - ${price:.2f}, 거래량 {volume:,}")
-            passed.append({"symbol": symbol, "market": exchange})
+            logger.info(f"[{sym}] US 통과 - ${c.get('price', 0):.2f}, 거래량 {c.get('volume', 0):,}")
+            passed.append({"symbol": sym, "market": exchange})
             if len(passed) >= max_stocks:
                 break
 
         logger.info(f"US 스크리너: {len(passed)}개 선택")
         return passed
+
+    def _get_us_watchlist_candidates(self, us_cfg: dict) -> list[dict]:
+        watchlist: list = us_cfg.get("watchlist", [])
+        if not watchlist:
+            logger.warning("US watchlist가 비어 있습니다.")
+            return []
+        logger.info(f"US 감시 목록 검사 중 ({len(watchlist)}개)...")
+        candidates = []
+        for item in watchlist:
+            symbol, exchange = parse_us_ticker(str(item))
+            if not symbol:
+                continue
+            quote = self.client.get_quote(symbol, market=exchange)
+            if quote:
+                candidates.append({"symbol": symbol, "exchange": exchange,
+                                   "price": quote["price"], "volume": quote["volume"]})
+        return candidates
+
+    def _get_us_dynamic_candidates(self, us_cfg: dict) -> list[dict]:
+        min_vol = us_cfg.get("min_universe_volume", 500_000)
+        logger.info("전체 시장 탐색 중 (US 거래량 상위)...")
+        universe = self.client.get_us_universe(min_vol=min_vol)
+        if not universe:
+            logger.warning("US 유니버스 조회 실패. US 감시 목록으로 대체합니다.")
+            return self._get_us_watchlist_candidates(us_cfg)
+        return universe

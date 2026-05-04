@@ -10,11 +10,12 @@ strategy: rsi
 market: BOTH
 
 # ────────────────────────────────────────────
-# 종목 탐색 모드 (한국 전용)
+# 종목 탐색 모드
 # false: 감시 목록(watchlist)에서만 탐색
 # true : 거래량 상위 전체 시장에서 자동 탐색
 # ────────────────────────────────────────────
 use_dynamic_universe: true
+use_dynamic_universe_us: false
 
 # ────────────────────────────────────────────
 # 모의투자 여부 (true: 모의투자, false: 실전투자)
@@ -57,7 +58,7 @@ screener:
 # ────────────────────────────────────────────
 us_screener:
   min_volume: 1000000          # 최소 거래량
-  max_stocks: 3                # 최대 선택 종목 수
+  max_stocks: 10                # 최대 선택 종목 수
   watchlist:
     - "AAPL.NASD"              # Apple
     - "MSFT.NASD"              # Microsoft
