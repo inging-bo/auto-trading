@@ -2,6 +2,7 @@ import json
 import logging
 import os
 
+import state
 from kis_client import KisClient, parse_us_ticker
 
 logger = logging.getLogger(__name__)
@@ -39,20 +40,27 @@ class Screener:
         run_us = ("US" in (active_markets or [])) if active_markets is not None \
             else market_config in ("US", "BOTH")
 
-        results: list[dict] = []
+        selected: list[dict] = []
+        rejected: list[dict] = []
 
         if run_kr:
-            results.extend(self._run_kr())
+            s, r = self._run_kr()
+            selected.extend(s)
+            rejected.extend(r)
         if run_us:
-            results.extend(self._run_us())
+            s, r = self._run_us()
+            selected.extend(s)
+            rejected.extend(r)
 
-        if results:
-            summary = [f"{r['symbol']}({r['market']})" for r in results]
+        state.set_screener_result(selected, rejected)
+
+        if selected:
+            summary = [f"{r['symbol']}({r['market']})" for r in selected]
             logger.info(f"스크리너 최종 선택: {summary}")
-        return results
+        return selected
 
     # ── 한국 주식 ────────────────────────────────────────────
-    def _run_kr(self) -> list[dict]:
+    def _run_kr(self) -> tuple[list[dict], list[dict]]:
         cfg = self.config.get("screener", {})
         min_volume: int = cfg.get("min_volume", 500000)
         min_price: int = cfg.get("min_price", 5000)
@@ -67,23 +75,28 @@ class Screener:
 
         excluded = load_excluded()
         passed: list[dict] = []
+        rejected: list[dict] = []
         for c in candidates:
-            if c["symbol"].upper() in excluded:
-                logger.info(f"[{c['symbol']}] KR 제외 종목 - 스킵")
+            sym = c["symbol"].upper()
+            if sym in excluded:
+                rejected.append({"symbol": sym, "market": "KRX", "reason": "제외 종목"})
+                logger.info(f"[{sym}] KR 제외 종목 - 스킵")
                 continue
             if c["volume"] < min_volume:
-                logger.debug(f"[{c['symbol']}] KR 제외 - 거래량 부족 ({c['volume']:,})")
+                rejected.append({"symbol": sym, "market": "KRX", "reason": "거래량 부족"})
+                logger.debug(f"[{sym}] KR 제외 - 거래량 부족 ({c['volume']:,})")
                 continue
             if not (min_price <= c["price"] <= max_price):
-                logger.debug(f"[{c['symbol']}] KR 제외 - 가격 범위 초과 ({c['price']:,}원)")
+                rejected.append({"symbol": sym, "market": "KRX", "reason": "가격 범위 초과"})
+                logger.debug(f"[{sym}] KR 제외 - 가격 범위 초과 ({c['price']:,}원)")
                 continue
-            logger.info(f"[{c['symbol']}] KR 통과 - {c['price']:,}원, 거래량 {c['volume']:,}")
-            passed.append({"symbol": c["symbol"], "market": "KRX"})
+            logger.info(f"[{sym}] KR 통과 - {c['price']:,}원, 거래량 {c['volume']:,}")
+            passed.append({"symbol": sym, "market": "KRX"})
             if len(passed) >= max_stocks:
                 break
 
         logger.info(f"KR 스크리너: {len(passed)}개 선택")
-        return passed
+        return passed, rejected
 
     def _get_kr_watchlist_candidates(self, cfg: dict) -> list[dict]:
         watchlist: list[str] = cfg.get("watchlist", [])
@@ -110,7 +123,7 @@ class Screener:
         return universe
 
     # ── 미국 주식 ────────────────────────────────────────────
-    def _run_us(self) -> list[dict]:
+    def _run_us(self) -> tuple[list[dict], list[dict]]:
         us_cfg      = self.config.get("us_screener", {})
         min_volume  = us_cfg.get("min_volume", 1_000_000)
         max_stocks  = us_cfg.get("max_stocks", 3)
@@ -124,16 +137,19 @@ class Screener:
             candidates = self._get_us_watchlist_candidates(us_cfg)
 
         if not candidates:
-            return []
+            return [], []
 
         passed: list[dict] = []
+        rejected: list[dict] = []
         for c in candidates:
             sym      = c["symbol"].upper()
             exchange = c.get("exchange", c.get("market", "NASDAQ"))
             if sym in excluded:
+                rejected.append({"symbol": sym, "market": exchange, "reason": "제외 종목"})
                 logger.info(f"[{sym}] US 제외 종목 - 스킵")
                 continue
             if c.get("volume", 0) < min_volume:
+                rejected.append({"symbol": sym, "market": exchange, "reason": "거래량 부족"})
                 logger.debug(f"[{sym}] US 제외 - 거래량 부족 ({c.get('volume', 0):,})")
                 continue
             logger.info(f"[{sym}] US 통과 - ${c.get('price', 0):.2f}, 거래량 {c.get('volume', 0):,}")
@@ -142,7 +158,7 @@ class Screener:
                 break
 
         logger.info(f"US 스크리너: {len(passed)}개 선택")
-        return passed
+        return passed, rejected
 
     def _get_us_watchlist_candidates(self, us_cfg: dict) -> list[dict]:
         watchlist: list = us_cfg.get("watchlist", [])

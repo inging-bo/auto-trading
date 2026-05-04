@@ -5,7 +5,12 @@
       "Skill(update-config)",
       "PowerShell(echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"C:/auto-trading/app.py\"}}' | python -c \"import json,sys; d=json.load\\(sys.stdin\\); f=d.get\\('tool_input',{}\\).get\\('file_path',''\\); print\\('\\\\n[README] 변경사항 반영 필요할 수 있음 — 기능·UI·설정·파일구조에 영향이 있는 경우 README.md를 업데이트하세요.'\\) if any\\(f.endswith\\(e\\) for e in \\('.py','.html','.js','.css','.yaml','.yml'\\)\\) else None\")",
       "PowerShell(echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"C:/auto-trading/app.py\"}}' | python -c \"import json,sys; d=json.load\\(sys.stdin\\); f=d.get\\('tool_input',{}\\).get\\('file_path',''\\); print\\('[README] 기능/UI/설정/파일구조 변경 시 README.md 업데이트 필요'\\) if any\\(f.endswith\\(e\\) for e in \\('.py','.html','.js','.css','.yaml','.yml'\\)\\) else None\")",
-      "PowerShell(Get-Content \"C:\\\\auto-trading\\\\.claude\\\\settings.json\" | python -c \"import json,sys; json.load\\(sys.stdin\\); print\\('JSON valid'\\)\")"
+      "PowerShell(Get-Content \"C:\\\\auto-trading\\\\.claude\\\\settings.json\" | python -c \"import json,sys; json.load\\(sys.stdin\\); print\\('JSON valid'\\)\")",
+      "Bash(python -c \"import pykis; help\\(pykis\\)\")",
+      "Bash(python *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }

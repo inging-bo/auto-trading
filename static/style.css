@@ -880,6 +880,90 @@ table { border-collapse: collapse; }
   vertical-align: middle;
 }
 
+/* ── Screener result ────────────────────────────────────── */
+.screener-updated {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.screener-table thead th:nth-child(n+2) { text-align: left; }
+.screener-table tbody td:nth-child(n+2) { text-align: left; }
+
+.screener-rejected-wrap {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.screener-rejected-header {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.screener-rejected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rejected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gray-surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 5px 12px;
+}
+
+.rejected-chip-symbol {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+.rejected-chip-reason {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 5px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+.signal-badge--buy     { background: rgba(0, 192, 135, 0.1); color: var(--green); }
+.signal-badge--sell    { background: rgba(255, 59, 48, 0.1);  color: var(--red); }
+.signal-badge--hold    { background: var(--gray-surf); color: var(--text-2); }
+.signal-badge--pending { background: rgba(255, 149, 0, 0.1); color: #c87c00; }
+
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 5px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.action-badge--buy  { background: rgba(0, 192, 135, 0.1); color: var(--green); }
+.action-badge--sell { background: rgba(255, 59, 48, 0.1);  color: var(--red); }
+.action-badge--hold { background: var(--gray-surf); color: var(--text-2); }
+
 /* ── Footer ─────────────────────────────────────────────── */
 .footer {
   background: var(--gray-surf);

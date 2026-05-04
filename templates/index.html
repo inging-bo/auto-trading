@@ -134,6 +134,31 @@
     </div>
   </section>
 
+  <!-- ── SECTION: 종목 선택 현황 ── -->
+  <section class="section section-light section-divider">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title no-mb">
+          종목 선택 현황
+          <span class="count-badge" id="screenerSelectedCount">0</span>
+        </h2>
+        <span class="screener-updated" id="screenerUpdated"></span>
+      </div>
+
+      <div id="screenerSelectedContainer">
+        <div class="empty-holdings">자동매매를 시작하면 선택된 종목이 표시됩니다.</div>
+      </div>
+
+      <div class="screener-rejected-wrap" id="screenerRejectedWrap" style="display:none">
+        <div class="screener-rejected-header">
+          스크리너 탈락
+          <span class="count-badge" id="screenerRejectedCount">0</span>
+        </div>
+        <div class="screener-rejected-chips" id="screenerRejectedContainer"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── SECTION: 매매 제외 종목 ── -->
   <section class="section section-light section-divider">
     <div class="container">

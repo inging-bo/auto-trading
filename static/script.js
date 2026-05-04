@@ -394,6 +394,101 @@ function renderTrades(trades) {
     </div>`;
 }
 
+// ── Screener result ──────────────────────────────────────
+async function fetchScreenerResult() {
+  try {
+    const res = await fetch('/api/screener-result');
+    const d   = await res.json();
+    renderScreenerResult(d);
+  } catch {/* silently retry */ }
+}
+
+function renderScreenerResult(d) {
+  const selectedContainer = document.getElementById('screenerSelectedContainer');
+  const rejectedWrap      = document.getElementById('screenerRejectedWrap');
+  const rejectedContainer = document.getElementById('screenerRejectedContainer');
+  const badge             = document.getElementById('screenerSelectedCount');
+  const updatedEl         = document.getElementById('screenerUpdated');
+
+  const selected  = d.selected  ?? [];
+  const rejected  = d.rejected  ?? [];
+  const signals   = d.signals   ?? [];
+  const updatedAt = d.updated_at;
+
+  badge.textContent = selected.length;
+  updatedEl.textContent = updatedAt ? `마지막 업데이트: ${updatedAt}` : '';
+
+  const signalMap = {};
+  signals.forEach(s => { signalMap[s.symbol] = s; });
+
+  if (!selected.length) {
+    selectedContainer.innerHTML =
+      `<div class="empty-holdings">자동매매를 시작하면 선택된 종목이 표시됩니다.</div>`;
+  } else {
+    const rows = selected.map(item => {
+      const sig   = signalMap[item.symbol];
+      const isKr  = item.market === 'KRX';
+      const mkBadge = isKr
+        ? `<span class="market-badge market-badge--kr">KR</span>`
+        : `<span class="market-badge market-badge--us">US</span>`;
+
+      let sigCell    = `<span class="signal-badge signal-badge--pending">대기중</span>`;
+      let priceCell  = '—';
+      let actionCell = '—';
+
+      if (sig) {
+        const sigCls = sig.signal === 'BUY'  ? 'signal-badge--buy'
+                     : sig.signal === 'SELL' ? 'signal-badge--sell'
+                     : 'signal-badge--hold';
+        sigCell = `<span class="signal-badge ${sigCls}">${esc(sig.signal)}</span>`;
+        priceCell = esc(sig.price_str);
+        const actCls = sig.action === '매수' ? 'action-badge--buy'
+                     : sig.action === '매도' ? 'action-badge--sell'
+                     : 'action-badge--hold';
+        actionCell = `<span class="action-badge ${actCls}">${esc(sig.action)}</span>`;
+      }
+
+      return `
+        <tr>
+          <td><span class="cell-symbol">${esc(item.symbol)}</span></td>
+          <td>${mkBadge}</td>
+          <td>${sigCell}</td>
+          <td>${priceCell}</td>
+          <td>${actionCell}</td>
+        </tr>`;
+    }).join('');
+
+    selectedContainer.innerHTML = `
+      <div class="table-wrap">
+        <table class="data-table screener-table">
+          <thead>
+            <tr><th>종목코드</th><th>시장</th><th>신호</th><th>현재가</th><th>실행</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  document.getElementById('screenerRejectedCount').textContent = rejected.length;
+  if (!rejected.length) {
+    rejectedWrap.style.display = 'none';
+  } else {
+    rejectedWrap.style.display = '';
+    rejectedContainer.innerHTML = rejected.map(r => {
+      const isKr = r.market === 'KRX';
+      const mkBadge = isKr
+        ? `<span class="market-badge market-badge--kr">KR</span>`
+        : `<span class="market-badge market-badge--us">US</span>`;
+      return `
+        <span class="rejected-chip">
+          ${mkBadge}
+          <span class="rejected-chip-symbol">${esc(r.symbol)}</span>
+          <span class="rejected-chip-reason">${esc(r.reason)}</span>
+        </span>`;
+    }).join('');
+  }
+}
+
 // ── Logs ─────────────────────────────────────────────────
 async function fetchLogs() {
   try {
@@ -578,12 +673,14 @@ fetchBalance();
 fetchWatchlist();
 fetchExcluded();
 fetchTrades();
+fetchScreenerResult();
 fetchLogs();
 updateClock();
 
-setInterval(fetchStatus,    3_000);
-setInterval(fetchLogs,      5_000);
-setInterval(fetchTrades,   10_000);
-setInterval(fetchBalance,  60_000);
-setInterval(fetchWatchlist, 60_000);
-setInterval(updateClock,    1_000);
+setInterval(fetchStatus,         3_000);
+setInterval(fetchLogs,           5_000);
+setInterval(fetchTrades,        10_000);
+setInterval(fetchScreenerResult, 5_000);
+setInterval(fetchBalance,       60_000);
+setInterval(fetchWatchlist,     60_000);
+setInterval(updateClock,         1_000);

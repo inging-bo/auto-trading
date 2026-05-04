@@ -5,6 +5,7 @@ import schedule
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import state
 from kis_client import KisClient
 from screener import Screener
 from strategies import load_strategy
@@ -124,17 +125,24 @@ class Trader:
         price_str = f"{price:,.0f}원" if is_kr else f"${price:.2f}"
 
         if signal == "BUY" and symbol not in self.holdings:
+            action = "매수"
+        elif signal == "SELL" and symbol in self.holdings:
+            action = "매도"
+        else:
+            action = "관망"
+
+        state.add_signal(symbol, market, signal, price, price_str, action)
+
+        if action == "매수":
             qty = self._calc_qty(price, market)
             logger.info(f"[{symbol}] 매수 실행 - {qty}주 @ {price_str}")
             order = self.client.buy(symbol, qty, market=market)
             if order:
                 self.holdings.add(symbol)
-
-        elif signal == "SELL" and symbol in self.holdings:
+        elif action == "매도":
             logger.info(f"[{symbol}] 매도 실행 @ {price_str}")
             self.client.sell(symbol, market=market)
             self.holdings.discard(symbol)
-
         else:
             logger.info(f"[{symbol}] {signal} - 관망")
 

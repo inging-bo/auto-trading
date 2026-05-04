@@ -1,7 +1,7 @@
 # ────────────────────────────────────────────
 # 전략 선택: ma_cross / rsi / bollinger / volatility_breakout
 # ────────────────────────────────────────────
-strategy: rsi
+strategy: bollinger
 
 # ────────────────────────────────────────────
 # 거래 시장
@@ -15,7 +15,7 @@ market: BOTH
 # true : 거래량 상위 전체 시장에서 자동 탐색
 # ────────────────────────────────────────────
 use_dynamic_universe: true
-use_dynamic_universe_us: false
+use_dynamic_universe_us: true
 
 # ────────────────────────────────────────────
 # 모의투자 여부 (true: 모의투자, false: 실전투자)
@@ -58,7 +58,7 @@ screener:
 # ────────────────────────────────────────────
 us_screener:
   min_volume: 1000000          # 최소 거래량
-  max_stocks: 10                # 최대 선택 종목 수
+  max_stocks: 5                # 최대 선택 종목 수
   watchlist:
     - "AAPL.NASD"              # Apple
     - "MSFT.NASD"              # Microsoft
@@ -76,7 +76,7 @@ us_screener:
 # ────────────────────────────────────────────
 risk:
   max_buy_amount: 500000       # KR 1회 최대 매수금액 (원)
-  us_max_buy_amount_usd: 300   # US 1회 최대 매수금액 (USD)
+  us_max_buy_amount_usd: 50   # US 1회 최대 매수금액 (USD)
   stop_loss_pct: -5.0          # 손절 기준 (%)
   take_profit_pct: 10.0        # 익절 기준 (%)
 

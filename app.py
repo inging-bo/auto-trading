@@ -470,6 +470,12 @@ def api_scan_mode():
     return jsonify({"status": "ok", "market": market, "dynamic": enabled})
 
 
+@app.route("/api/screener-result")
+def api_screener_result():
+    import state
+    return jsonify(state.get_state())
+
+
 @app.route("/api/backtest", methods=["POST"])
 def api_backtest():
     data   = request.get_json() or {}
