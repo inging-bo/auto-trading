@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 import state
 from kis_client import KisClient
-from screener import Screener
+from screener import Screener, load_excluded
 from strategies import load_strategy
 
 # ── 로깅 설정 ──────────────────────────────────────────────
@@ -74,9 +74,13 @@ class Trader:
         risk = self.config.get("risk", {})
         stop_loss = risk.get("stop_loss_pct", -5.0)
         take_profit = risk.get("take_profit_pct", 10.0)
+        excluded = load_excluded()
 
         for h in holdings:
             symbol = h["symbol"]
+            if str(symbol).upper() in excluded:
+                logger.debug(f"[{symbol}] 제외 종목 - 손절/익절 미적용")
+                continue
             rate = h["profit_rate"]
             market = h.get("kis_market", "KRX")
 

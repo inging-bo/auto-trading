@@ -58,7 +58,7 @@ screener:
 # ────────────────────────────────────────────
 us_screener:
   min_volume: 1000000          # 최소 거래량
-  max_stocks: 5                # 최대 선택 종목 수
+  max_stocks: 30                # 최대 선택 종목 수
   watchlist:
     - "AAPL.NASD"              # Apple
     - "MSFT.NASD"              # Microsoft

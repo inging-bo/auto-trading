@@ -124,6 +124,15 @@ class UILogHandler(logging.Handler):
                          "action": "SELL", "reason": "익절",
                          "detail": m.group(2)}
         if entry:
+            ex = load_excluded()
+            sym = str(entry.get("symbol", "")).upper()
+            if (
+                entry.get("action") == "SELL"
+                and entry.get("reason") in ("손절", "익절")
+                and sym in ex
+            ):
+                entry = None
+        if entry:
             trade_entries.appendleft(entry)
             _save_trade(entry)
 
@@ -407,6 +416,15 @@ def api_trades():
                 hour=0, minute=0, second=0, microsecond=0
             ) if days == 0 else datetime.now() - timedelta(days=days)
             trades = [t for t in trades if t.get("dt", "") >= cutoff.strftime("%Y-%m-%dT%H:%M:%S")]
+    excluded = load_excluded()
+    trades = [
+        t
+        for t in trades
+        if not (
+            t.get("reason") in ("손절", "익절")
+            and str(t.get("symbol", "")).upper() in excluded
+        )
+    ]
     return jsonify(trades)
 
 
