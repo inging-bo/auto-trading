@@ -146,10 +146,28 @@ class Trader:
                     f"[{symbol}] 매수 스킵 - 1회 매수 한도로는 1주 미만 ({price_str})"
                 )
             else:
-                logger.info(f"[{symbol}] 매수 실행 - {qty}주 @ {price_str}")
-                order = self.client.buy(symbol, qty, market=market)
-                if order:
-                    self.holdings.add(symbol)
+                balance = self.client.get_balance()
+                if is_kr:
+                    available = balance["cash"]
+                    needed = price * qty
+                    unit = "원"
+                    needed_str = f"{needed:,.0f}{unit}"
+                    avail_str = f"{available:,.0f}{unit}"
+                else:
+                    available = balance["usd_cash"]
+                    needed = price * qty
+                    unit = "USD"
+                    needed_str = f"${needed:,.2f}"
+                    avail_str = f"${available:,.2f}"
+                if available < needed:
+                    logger.info(
+                        f"[{symbol}] 매수 스킵 - 잔고 부족 (필요 {needed_str}, 보유 {avail_str})"
+                    )
+                else:
+                    logger.info(f"[{symbol}] 매수 실행 - {qty}주 @ {price_str}")
+                    order = self.client.buy(symbol, qty, market=market)
+                    if order:
+                        self.holdings.add(symbol)
         elif action == "매도":
             logger.info(f"[{symbol}] 매도 실행 @ {price_str}")
             self.client.sell(symbol, market=market)

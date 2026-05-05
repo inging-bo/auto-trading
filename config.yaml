@@ -34,8 +34,8 @@ screener:
   min_universe_volume: 100000  # 동적 탐색 시 유니버스 최소 거래량
   min_volume: 500000           # 스크리너 최소 거래량
   min_price: 5000              # 최소 주가
-  max_price: 200000            # 최대 주가
-  max_stocks: 5                # 최대 선택 종목 수
+  max_price: 100000            # 최대 주가
+  max_stocks: 20                # 최대 선택 종목 수
   watchlist:               # 감시 종목 코드 목록
     - "005930"             # 삼성전자
     - "000660"             # SK하이닉스
@@ -75,7 +75,7 @@ us_screener:
 # 리스크 관리
 # ────────────────────────────────────────────
 risk:
-  max_buy_amount: 500000       # KR 1회 최대 매수금액 (원)
+  max_buy_amount: 100000       # KR 1회 최대 매수금액 (원)
   us_max_buy_amount_usd: 60   # US 1회 최대 매수금액 (USD)
   stop_loss_pct: -5.0          # 손절 기준 (%)
   take_profit_pct: 10.0        # 익절 기준 (%)
