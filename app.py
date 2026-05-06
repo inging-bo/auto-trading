@@ -12,41 +12,7 @@ from kis_client import KisClient, parse_us_ticker
 from screener import load_excluded, EXCLUDED_FILE
 from strategies import STRATEGY_MAP
 from backtest import run_all_backtests
-
-STOCK_NAMES: dict[str, str] = {
-    # 한국
-    "005930": "삼성전자",
-    "000660": "SK하이닉스",
-    "035420": "NAVER",
-    "035720": "카카오",
-    "051910": "LG화학",
-    "006400": "삼성SDI",
-    "207940": "삼성바이오로직스",
-    "068270": "셀트리온",
-    "105560": "KB금융",
-    "055550": "신한지주",
-    "003550": "LG",
-    "066570": "LG전자",
-    "028260": "삼성물산",
-    "012330": "현대모비스",
-    "005380": "현대차",
-    # 미국
-    "AAPL": "Apple",
-    "MSFT": "Microsoft",
-    "NVDA": "NVIDIA",
-    "TSLA": "Tesla",
-    "AMZN": "Amazon",
-    "GOOGL": "Alphabet",
-    "GOOG": "Alphabet",
-    "META": "Meta",
-    "NFLX": "Netflix",
-    "AMD": "AMD",
-    "INTC": "Intel",
-    "ORCL": "Oracle",
-    "CRM": "Salesforce",
-    "ADBE": "Adobe",
-    "PYPL": "PayPal",
-}
+from constants import STOCK_NAMES
 
 app = Flask(__name__)
 

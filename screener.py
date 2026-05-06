@@ -4,6 +4,7 @@ import os
 
 import state
 from kis_client import KisClient, parse_us_ticker
+from constants import STOCK_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +79,21 @@ class Screener:
         rejected: list[dict] = []
         for c in candidates:
             sym = c["symbol"].upper()
+            name = c.get("name") or STOCK_NAMES.get(sym, sym)
             if sym in excluded:
-                rejected.append({"symbol": sym, "market": "KRX", "reason": "제외 종목"})
+                rejected.append({"symbol": sym, "name": name, "market": "KRX", "reason": "제외 종목"})
                 logger.info(f"[{sym}] KR 제외 종목 - 스킵")
                 continue
             if c["volume"] < min_volume:
-                rejected.append({"symbol": sym, "market": "KRX", "reason": "거래량 부족"})
+                rejected.append({"symbol": sym, "name": name, "market": "KRX", "reason": "거래량 부족"})
                 logger.debug(f"[{sym}] KR 제외 - 거래량 부족 ({c['volume']:,})")
                 continue
             if not (min_price <= c["price"] <= max_price):
-                rejected.append({"symbol": sym, "market": "KRX", "reason": "가격 범위 초과"})
+                rejected.append({"symbol": sym, "name": name, "market": "KRX", "reason": "가격 범위 초과"})
                 logger.debug(f"[{sym}] KR 제외 - 가격 범위 초과 ({c['price']:,}원)")
                 continue
             logger.info(f"[{sym}] KR 통과 - {c['price']:,}원, 거래량 {c['volume']:,}")
-            passed.append({"symbol": sym, "market": "KRX"})
+            passed.append({"symbol": sym, "name": name, "market": "KRX"})
             if len(passed) >= max_stocks:
                 break
 

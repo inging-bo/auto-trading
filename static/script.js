@@ -479,10 +479,14 @@ function renderScreenerResult(d) {
       const mkBadge = isKr
         ? `<span class="market-badge market-badge--kr">KR</span>`
         : `<span class="market-badge market-badge--us">US</span>`;
+      const nameEl = (isKr && r.name && r.name !== r.symbol)
+        ? `<span class="rejected-chip-name">${esc(r.name)}</span>`
+        : '';
       return `
         <span class="rejected-chip">
           ${mkBadge}
           <span class="rejected-chip-symbol">${esc(r.symbol)}</span>
+          ${nameEl}
           <span class="rejected-chip-reason">${esc(r.reason)}</span>
         </span>`;
     }).join('');
